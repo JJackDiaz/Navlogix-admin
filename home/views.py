@@ -10,6 +10,15 @@ def index(request):
     return render(request, 'pages/index.html')
 
 def address(request):
+
+    #INI INSERTO VEHICULOS
+    #####vehicle = Vehicle(brand='Critroen', model='Corolla', plate='ABC-4456', capacity=50)
+    #####vehicle.save()
+
+    #####driver = Driver(name='Pedro', vehicle=vehicle)
+    #####driver.save()
+    #FIN INSERTO VEHICULOS
+
     today = datetime.date.today()
     routes = Route.objects.filter(parent_item__date=today)
     
@@ -18,6 +27,7 @@ def address(request):
     
     routes_data = [
         {
+            'address': route.address.street + ' ' + route.address.number + ', ' + route.address.city,
             'longitude': route.address.longitude,
             'latitude': route.address.latitude,
             'order': route.order,
@@ -46,7 +56,7 @@ def handle_uploaded_file(file):
         print(f"Error al leer el archivo: {e}")
         return
 
-    expected_columns = ['street', 'number', 'city']
+    expected_columns = ['street', 'number', 'city', 'lat', 'long']
     for col in expected_columns:
         if col not in df.columns:
             print(f"Error: Falta la columna '{col}' en el archivo.")
@@ -56,9 +66,11 @@ def handle_uploaded_file(file):
 
     for route_index, (_, row) in enumerate(df.iterrows()):
         try:
-            coordinates = get_coordinates(row['street'], row['number'], row['city'])
-            if coordinates:
-                latitude, longitude = coordinates
+            #coordinates = get_coordinates(row['street'], row['number'], row['city'])
+            #if coordinates:
+                #latitude, longitude = coordinates
+                latitude = row['lat'] 
+                longitude = row['long']
                 address = Address.objects.create(
                     street=row['street'], 
                     number=row['number'],
@@ -67,8 +79,8 @@ def handle_uploaded_file(file):
                     longitude=longitude
                 )
                 created_addresses.append(address)
-            else:
-                print(f"Error: No se pudieron obtener las coordenadas para la dirección: {row['street']} {row['number']}, {row['city']}")
+            #else:
+            #    print(f"Error: No se pudieron obtener las coordenadas para la dirección: {row['street']} {row['number']}, {row['city']}")
         except KeyError as e:
             print(f"Error: Falta la columna {e} en el archivo.")
         except Exception as e:

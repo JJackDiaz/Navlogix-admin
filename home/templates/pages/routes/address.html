@@ -25,7 +25,9 @@
                 </div>
             </div>
         </div>
-        <div class="col-xl-9 col-sm-6 mb-xl-0 mb-4">
+    </div> 
+    <div class="row">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
             <div class="card">
                 <div class="card-body p-3">
                     <h2>Mapa de Rutas</h2>
@@ -67,15 +69,51 @@
         });
 
         routes.forEach(function(route) {
-            if (route.driver == driverId && route.longitude && route.latitude) {
-                new mapboxgl.Marker()
-                    .setLngLat([route.longitude, route.latitude])
-                    .setPopup(new mapboxgl.Popup({ offset: 20 })
-                        .setText(`Destino ${route.order}: ${route.description}`))
-                    .addTo(map);
-            } else {
-                console.error('Invalid coordinates for route:', route);
-            }
+
+            var color = [
+                'red',
+                'blue',
+                'green',
+                'yellow',
+                'purple',
+                'orange',
+                'pink',
+                'brown',
+                'black',
+                'sky blue'
+            ]
+
+            console.log("showRoute" + driverId);
+            //if (route.driver == driverId){
+                console.log("aca");
+                if(route.longitude && route.latitude) {
+                    console.log("aqui");
+                    console.log(route);
+
+                    var el = document.createElement('div');
+                    el.className = 'marker';
+                    el.style.backgroundColor = color[route.driver];  
+                    el.style.width = '25px';
+                    el.style.height = '25px';
+                    el.style.borderRadius = '50%';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    el.style.color = 'white';
+                    el.style.fontSize = '12px';
+                    el.style.fontWeight = 'bold';
+                    el.innerText = route.order;
+
+                    new mapboxgl.Marker(el)
+                        .setLngLat([route.longitude, route.latitude])
+                        .setPopup(new mapboxgl.Popup({ offset: 20 })
+                            .setText(`(${route.driver}) Destino ${route.order}: ${route.address} - ${route.description}`))
+                        .addTo(map);
+                    console.log("aco");
+                } else {
+                    console.error('Invalid coordinates for route:', route);
+                }   
+            //}
         });
     }
 
