@@ -1,0 +1,92 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-xl-3 col-sm-6 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h2>Upload File</h2>
+                    <form method="post" action="{% url 'upload_file' %}" enctype="multipart/form-data">
+                        {% csrf_token %}
+                        <input type="file" name="file" id="file">
+                        <button type="submit">Upload</button>
+                    </form>
+                    <h2>Choferes</h2>
+                    <select id="driver-select" class="form-select mb-3">
+                        <option value="" selected disabled>Selecciona un chofer</option>
+                        {% for driver in drivers %}
+                            <option value="{{ driver.id }}">{{ driver.name }}</option>
+                        {% endfor %}
+                    </select>
+                    <button id="show-route-btn" class="btn btn-primary">Mostrar Ruta</button>
+                </div>
+            </div>
+        </div>
+        <div class="col-xl-9 col-sm-6 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h2>Mapa de Rutas</h2>
+                    <div id="map" style="width: 100%; height: 500px;"></div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "includes/footer.html" %}
+
+{% endblock content %}
+
+{% block scripts %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css' rel='stylesheet' />
+<script src='https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js'></script>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
+    var map = new mapboxgl.Map({
+        container: 'map',
+        style: 'mapbox://styles/mapbox/streets-v11',
+        center: [-70.64827, -33.45694],  // Centrado en Santiago
+        zoom: 10
+    });
+
+    var routes = {{ routes|safe }};
+    console.log(routes);
+
+    function showRoute(driverId) {
+        // Limpiar el mapa antes de mostrar nuevas rutas
+        map.remove();
+        map = new mapboxgl.Map({
+            container: 'map',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [-70.64827, -33.45694],  // Centrado en Santiago
+            zoom: 10
+        });
+
+        routes.forEach(function(route) {
+            if (route.driver == driverId && route.longitude && route.latitude) {
+                new mapboxgl.Marker()
+                    .setLngLat([route.longitude, route.latitude])
+                    .setPopup(new mapboxgl.Popup({ offset: 20 })
+                        .setText(`Destino ${route.order}: ${route.description}`))
+                    .addTo(map);
+            } else {
+                console.error('Invalid coordinates for route:', route);
+            }
+        });
+    }
+
+    document.getElementById('show-route-btn').addEventListener('click', function() {
+        var driverId = document.getElementById('driver-select').value;
+        if (driverId) {
+            showRoute(driverId);
+        } else {
+            console.error('Por favor selecciona un chofer.');
+        }
+    });
+</script>
+
+{% endblock scripts %}

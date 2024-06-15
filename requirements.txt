@@ -1,0 +1,12 @@
+django
+pandas
+requests
+openpyxl
+gunicorn
+python-dotenv
+whitenoise
+django-admin-soft-dashboard==1.0.11
+scikit-learn
+
+# psycopg2-binary
+# mysqlclient
