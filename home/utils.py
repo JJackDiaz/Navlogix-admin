@@ -3,6 +3,7 @@ from itertools import permutations
 from django.db.models import Count, F
 import datetime
 import requests
+import time
 
 from sklearn.cluster import KMeans
 import numpy as np
@@ -75,6 +76,8 @@ def optimize_and_save_routes(addresses, vehicles):
         print("La lista de direcciones o vehículos está vacía.")
         return
 
+    start_time = time.time()
+
     today = datetime.date.today()
     Route.objects.filter(parent_item__date=today).delete()
 
@@ -102,6 +105,8 @@ def optimize_and_save_routes(addresses, vehicles):
                     day='Monday', date=today, description=f'Description {order}'
                 )
                 Route.objects.get_or_create(address=address, driver=driver, parent_item=parent_item, order=order)
+                execution_time = time.time() - start_time
+            print(f"Tiempo de ejecución: {execution_time:.4f} segundos")
         else:
             print(f"No se encontró conductor para el vehículo {vehicle}.")
 
