@@ -1,0 +1,28 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3">
+                    <h1>Step 2</h1>
+                    <form method="post">
+                        {% csrf_token %}
+                        {{ form.as_p }}
+                        <button type="submit">Next</button>
+                </div>
+            </div>
+        </div>
+    </div> 
+</div>
+
+{% include "includes/footer.html" %}
+
+{% endblock content %}
+
+{% block scripts %}
+
+
+{% endblock scripts %}

@@ -164,3 +164,6 @@ EMAIL_BACKEND = 'django.core.mail.backends.console.EmailBackend'
 
 SESSION_COOKIE_AGE = 3600 * 24 * 30
 SESSION_EXPIRE_AT_BROWSER_CLOSE = False
+
+MEDIA_URL = '/media/'
+MEDIA_ROOT = os.path.join(BASE_DIR, 'media')
