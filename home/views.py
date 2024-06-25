@@ -62,12 +62,14 @@ def save_step_data(request, step):
             return JsonResponse({'status': 'success'})
         elif step == 2:
             if(request.session.get('uploaded_addresses')):
+                #create_routes(request.session.list('uploaded_addresses'))
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Invalid step'})
         elif step == 3:
             form = Step3Form(request.POST)
             if form.is_valid():
+                print("ENTRO")
                 request.session[f'step{step}_data'] = form.cleaned_data
                 return JsonResponse({'status': 'success'})
             else:
@@ -170,3 +172,16 @@ def complete_form(request):
     except Exception as e:
         print(f'Error al completar el formulario: {str(e)}')
         return JsonResponse({'status': 'error', 'message': 'Error al procesar el formulario. Por favor, inténtalo de nuevo más tarde.'})
+    
+def create_routes(request):
+    if request.session.get('uploaded_addresses'):
+
+        uploaded_file = request.FILES['file']
+
+        print("createroutes")
+        print(uploaded_file)
+        
+
+        return JsonResponse({'status': 'success', 'addresses': addresses})
+    else:
+        return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})
