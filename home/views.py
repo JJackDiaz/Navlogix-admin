@@ -61,8 +61,9 @@ def save_step_data(request, step):
             request.session['selected_drivers'] = selected_drivers
             return JsonResponse({'status': 'success'})
         elif step == 2:
-            if(request.session.get('uploaded_addresses')):
-                #create_routes(request.session.list('uploaded_addresses'))
+            uploaded_addresses = request.session.get('uploaded_addresses')
+            if uploaded_addresses:
+                create_routes(uploaded_addresses)
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Invalid step'})
@@ -95,69 +96,79 @@ def upload_file_view(request):
         form = UploadFileForm()
     return render(request, 'upload.html', {'form': form})
 
-def handle_uploaded_file(file):
-    try:
-        df = pd.read_excel(file)
-    except Exception as e:
-        print(f"Error al leer el archivo: {e}")
-        return
+@login_required
+def upload_file_view(request):
+    if request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            # Lê o arquivo enviado
+            uploaded_file = request.FILES['file']
+            try:
+                df = pd.read_excel(uploaded_file)
+            except Exception as e:
+                print(f"Error al leer el archivo: {e}")
+                return HttpResponseBadRequest("Error al leer el archivo")
 
-    expected_columns = ['street', 'number', 'city', 'lat', 'long']
-    for col in expected_columns:
-        if col not in df.columns:
-            print(f"Error: Falta la columna '{col}' en el archivo.")
-            return
+            # Verifica se o arquivo tem as colunas esperadas
+            expected_columns = ['street', 'number', 'city', 'lat', 'long']
+            for col in expected_columns:
+                if col not in df.columns:
+                    print(f"Error: Falta la columna '{col}' en el archivo.")
+                    return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
 
-    created_addresses = []
+            # Armazena o DataFrame na sessão
+            request.session['uploaded_addresses'] = df.to_dict(orient='records')
 
-    for route_index, (_, row) in enumerate(df.iterrows()):
-        try:
-            #coordinates = get_coordinates(row['street'], row['number'], row['city'])
-            #if coordinates:
-                #latitude, longitude = coordinates
-                latitude = row['lat'] 
-                longitude = row['long']
-                address = Address.objects.create(
-                    street=row['street'], 
-                    number=row['number'],
-                    city=row['city'],
-                    latitude=latitude,
-                    longitude=longitude
-                )
-                created_addresses.append(address)
-            #else:
-            #    print(f"Error: No se pudieron obtener las coordenadas para la dirección: {row['street']} {row['number']}, {row['city']}")
-        except KeyError as e:
-            print(f"Error: Falta la columna {e} en el archivo.")
-        except Exception as e:
-            print(f"Error al procesar la fila: {e}")
-
-    vehicles = Vehicle.objects.all()
-    optimize_and_save_routes(created_addresses, vehicles)
+            return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
+    else:
+        form = UploadFileForm()
+    return render(request, 'upload.html', {'form': form})
 
 #--------------- VALIDACION FORMULARIO 3 PASOS ------------------------
-
 def upload_routes(request, step):
-    if request.method == 'POST' and request.FILES.get('file'):
-        uploaded_file = request.FILES['file']
-        addresses = process_uploaded_file(uploaded_file)
+    if request.method == 'POST':
+        form = UploadFileForm(request.POST, request.FILES)
+        if form.is_valid():
+            uploaded_file = request.FILES['file']
+            try:
+                df = pd.read_excel(uploaded_file)
+            except Exception as e:
+                print(f"Error al leer el archivo: {e}")
+                return HttpResponseBadRequest("Error al leer el archivo")
 
-        request.session['uploaded_addresses'] = addresses
+            expected_columns = ['street', 'number', 'city', 'lat', 'long']
+            for col in expected_columns:
+                if col not in df.columns:
+                    print(f"Error: Falta la columna '{col}' en el archivo.")
+                    return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
 
-        return JsonResponse({'status': 'success', 'addresses': addresses})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})
+            # Armazena o DataFrame na sessão
+            print(df.to_dict(orient='records'))
+            request.session['uploaded_addresses'] = df.to_dict(orient='records')
 
-def process_uploaded_file(uploaded_file):
-    try:
-        df = pd.read_excel(uploaded_file)
-        addresses = df['street'].astype(str) + ' ' + df['number'].astype(str) + ', ' + df['city'].astype(str)
-        addresses_list = addresses.tolist()
 
-        return addresses_list
-    except Exception as e:
-        print('Error al procesar el archivo:', str(e))
-        return []
+            return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
+
+    # Se não for um POST válido ou se houver erros, retorna uma resposta de erro
+    return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})
+
+
+    
+def create_routes(request):
+
+
+        print("createroutes")
+        print(request)
+
+        created_addresses = []
+        created_addresses.append(request)
+
+        # Chamando a função para otimizar e salvar as rotas
+        vehicles = Vehicle.objects.all()
+        optimize_and_save_routes(created_addresses, vehicles, request)
+        
+
+        return JsonResponse({'status': 'success', 'addresses': request})
 
 def complete_form(request):
     try:
@@ -172,16 +183,3 @@ def complete_form(request):
     except Exception as e:
         print(f'Error al completar el formulario: {str(e)}')
         return JsonResponse({'status': 'error', 'message': 'Error al procesar el formulario. Por favor, inténtalo de nuevo más tarde.'})
-    
-def create_routes(request):
-    if request.session.get('uploaded_addresses'):
-
-        uploaded_file = request.FILES['file']
-
-        print("createroutes")
-        print(uploaded_file)
-        
-
-        return JsonResponse({'status': 'success', 'addresses': addresses})
-    else:
-        return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})

@@ -185,7 +185,7 @@
         },
         success: function(response) {
             if (response.status === 'success') {
-                console.log('Archivo subido exitosamente', response.addresses);
+                console.log('Archivo subido exitosamente', response);
                 displayAddresses(response.addresses); 
             } else {
                 console.error('Error al subir archivo:', response.message);
@@ -202,7 +202,13 @@
         addressesList.empty();
 
         addresses.forEach(function(address) {
-            var li = $('<li>').text(address);
+            var li = $('<li>');
+            li.append($('<strong>').text('Street: ' + address.street));
+            li.append($('<span>').text(', Number: ' + address.number));
+            li.append($('<span>').text(', City: ' + address.city));
+            li.append($('<span>').text(', Latitude: ' + address.lat));
+            li.append($('<span>').text(', Longitude: ' + address.long));
+            
             addressesList.append(li);
         });
     }
