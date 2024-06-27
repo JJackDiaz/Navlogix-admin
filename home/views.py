@@ -1,7 +1,7 @@
 from django.shortcuts import render, redirect
 from .forms import UploadFileForm
 from .models import Address, Route, Driver, Vehicle, ParentItem
-from .utils import optimize_and_save_routes, get_coordinates
+from .utils import optimize_and_save_routes
 import pandas as pd
 import datetime
 import json
@@ -177,7 +177,7 @@ def complete_form(request):
         step2_data = request.session.get('uploaded_addresses')
 
         print(step1_data)
-        print(step2_data)
+        #print(step2_data)
         
         return JsonResponse({'status': 'success', 'message': 'Formulario completado exitosamente.'})
     except Exception as e:

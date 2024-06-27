@@ -7,14 +7,14 @@ from django.db.models import Count, F
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
 
-from .models import Address, Route, Driver, Vehicle, ParentItem
+from .models import Address, Route, Driver, Vehicle
 
 def calculate_distance(address1, address2):
     R = 6371.0
-    lat1 = math.radians(address1[2])
-    lon1 = math.radians(address1[3])
-    lat2 = math.radians(address2[2])
-    lon2 = math.radians(address2[3])
+    lat1 = math.radians(address1['lat'])
+    lon1 = math.radians(address1['long'])
+    lat2 = math.radians(address2['lat'])
+    lon2 = math.radians(address2['long'])
 
     dlon = lon2 - lon1
     dlat = lat2 - lat1
@@ -30,7 +30,7 @@ def optimize_route_for_vehicle(route_addresses):
         return route_addresses
 
     # Convertir las direcciones a un array de numpy
-    locations = np.array([[address[2], address[3]] for address in route_addresses])
+    locations = np.array([[address['lat'], address['long']] for address in route_addresses])
 
     # Crear el modelo NearestNeighbors
     neighbors = NearestNeighbors(n_neighbors=len(route_addresses), algorithm='ball_tree').fit(locations)
@@ -57,7 +57,7 @@ def optimize_route_for_vehicle2(route_addresses):
         return route_addresses
 
     # Convertir las direcciones a un array de numpy
-    locations = np.array([[address[2], address[3]] for address in route_addresses])
+    locations = np.array([[address['lat'], address['long']] for address in route_addresses])
 
     # Crear el modelo NearestNeighbors
     neighbors = NearestNeighbors(n_neighbors=len(route_addresses), algorithm='ball_tree').fit(locations)
@@ -68,7 +68,7 @@ def optimize_route_for_vehicle2(route_addresses):
 
     while remaining_addresses:
         # Encontrar el vecino más cercano a la última dirección en la ruta
-        distances, indices = neighbors.kneighbors(np.array([route[-1][2], route[-1][3]]).reshape(1, -1))
+        distances, indices = neighbors.kneighbors(np.array([route[-1]['lat'], route[-1]['long']]).reshape(1, -1))
         for idx in indices[0][1:]:
             nearest_address = route_addresses[idx]
             if nearest_address in remaining_addresses:
@@ -84,7 +84,7 @@ def optimize_route_for_vehicle2(route_addresses):
 def calculate_total_distance(route):
     total_distance = 0.0
     for i in range(len(route) - 1):
-        total_distance += np.sqrt((route[i+1][2] - route[i][2])**2 + (route[i+1][3] - route[i][3])**2)
+        total_distance += calculate_distance(route[i], route[i + 1])
     return total_distance
 
 def two_opt(route):
@@ -108,21 +108,27 @@ def two_opt(route):
     return best_route
 
 def cluster_addresses(addresses, n_clusters):
-    coordinates = np.array([[address[2], address[3]] for address in addresses])  # assumindo (street, number, lat, long) na tupla
+
+    print("cluster_addresses", addresses)
+
+    coordinates = np.array([[address['lat'], address['long']] for address in addresses])
+
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(coordinates)
     clustered_addresses = [[] for _ in range(n_clusters)]
 
     for i, label in enumerate(kmeans.labels_):
         clustered_addresses[label].append({
-            'street': addresses[i][0],
-            'number': addresses[i][1],
-            'lat': addresses[i][2],
-            'long': addresses[i][3]
+            'street': addresses[i]['street'],
+            'number': addresses[i]['number'],
+            'lat': addresses[i]['lat'],
+            'long': addresses[i]['long']
         })
 
     return clustered_addresses
 
+
 def optimize_and_save_routes(addresses, vehicles, request):
+    # Verificar la disponibilidad de conductores
     drivers = Driver.objects.annotate(num_routes=Count('route')).filter(num_routes__lt=F('vehicle__capacity'))
 
     if not drivers.exists():
@@ -155,33 +161,13 @@ def optimize_and_save_routes(addresses, vehicles, request):
         print(f"RUTA para {vehicle}:")
         for i, address in enumerate(optimal_route):
             order = i + 1
-            print(f"  Destino {order}: {address}")
+            print(f"  Destino {order}: {address['street']} {address['number']}, ({address['lat']}, {address['long']})")
 
-        optimized_routes[str(vehicle.id)] = [address[0] for address in optimal_route]  # Supondo que address[0] é o ID do endereço
+        optimized_routes[str(vehicle.id)] = [address for address in optimal_route]
 
-    # Armazenando na sessão
     request.session[session_key] = optimized_routes
 
     print("Rutas optimizadas almacenadas en la sesión:", request.session[session_key])
 
     execution_time = time.time() - start_time
     print(f"Tiempo de ejecución: {execution_time:.4f} segundos")
-
-def get_coordinates(street, number, city):
-    MAPBOX_ACCESS_TOKEN = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg'
-    address = f"{street} {number}, {city}"
-    url = f'https://api.mapbox.com/geocoding/v5/mapbox.places/{address}.json?access_token={MAPBOX_ACCESS_TOKEN}'
-
-    try:
-        response = requests.get(url)
-        response.raise_for_status()
-        data = response.json()
-        if data['features']:
-            coordinates = data['features'][0]['geometry']['coordinates']
-            return coordinates[1], coordinates[0]
-        else:
-            print(f"No se encontraron coordenadas para la dirección: {address}")
-            return None
-    except requests.RequestException as e:
-        print(f"Error en la solicitud a Mapbox: {e}")
-        return None
