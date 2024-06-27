@@ -6,6 +6,7 @@ import pandas as pd
 import datetime
 import json
 from django.contrib.auth.decorators import login_required
+from django.contrib.sessions.models import Session
 
 from django.shortcuts import render, redirect
 from django.http import HttpResponse
@@ -85,16 +86,16 @@ def save_step_data(request, step):
             return JsonResponse({'status': 'error', 'errors': form.errors})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
-@login_required
-def upload_file_view(request):
-    if request.method == 'POST':
-        form = UploadFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            handle_uploaded_file(request.FILES['file'])
-            return redirect('address')
-    else:
-        form = UploadFileForm()
-    return render(request, 'upload.html', {'form': form})
+# @login_required
+# def upload_file_view(request):
+#     if request.method == 'POST':
+#         form = UploadFileForm(request.POST, request.FILES)
+#         if form.is_valid():
+#             handle_uploaded_file(request.FILES['file'])
+#             return redirect('address')
+#     else:
+#         form = UploadFileForm()
+#     return render(request, 'upload.html', {'form': form})
 
 @login_required
 def upload_file_view(request):
@@ -148,10 +149,25 @@ def upload_routes(request, step):
 
 
             return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
-
-    # Se não for um POST válido ou se houver erros, retorna uma resposta de erro
+        
     return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})
 
+def get_session_data(request):
+    session_key = 'optimized_routes'  # Clave para obtener de la sesión
+
+    # Obtener el ID de la sesión actual (puedes ajustar esto según tu lógica de manejo de sesiones)
+    session_id = request.session.session_key
+
+    try:
+        # Obtener el objeto Session de la base de datos
+        db_session = Session.objects.get(session_key=session_id)
+
+        # Obtener los datos de sesión asociados con la clave
+        session_data = db_session.get_decoded().get(session_key, {})
+
+        return JsonResponse(session_data)
+    except Session.DoesNotExist:
+        return JsonResponse({'error': 'No se encontró la sesión'}, status=404)
 
     
 def create_routes(request):
@@ -165,7 +181,7 @@ def create_routes(request):
 
         # Chamando a função para otimizar e salvar as rotas
         vehicles = Vehicle.objects.all()
-        optimize_and_save_routes(created_addresses, vehicles, request)
+        optimize_and_save_routes(created_addresses, vehicles)
         
 
         return JsonResponse({'status': 'success', 'addresses': request})

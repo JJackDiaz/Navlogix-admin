@@ -82,10 +82,20 @@
                                 <div class="card h-100">
                                     <div class="card-body">
                                         <h1>Step 3</h1>
+                                        
+                                        <!-- Formulario para el paso 3 -->
                                         <form id="step3_form" method="post">
                                             {% csrf_token %}
                                             {{ step3_form.as_p }}
                                             <button type="button" class="btn btn-primary" onclick="submitStep(3)">Complete</button>
+                                            
+                                            <!-- Contenedor para mostrar la sesión -->
+                                            <div id="sessionData">
+                                                <h3>Contenido de la sesión:</h3>
+                                                <ul id="sessionList">
+                                                    <!-- Los datos de la sesión se mostrarán aquí -->
+                                                </ul>
+                                            </div>
                                         </form>
                                     </div>
                                 </div>
@@ -212,6 +222,28 @@
             addressesList.append(li);
         });
     }
+    
+    function showSessionData() {
+        fetch('/get_session_data/')
+            .then(response => response.json())
+            .then(data => {
+                const sessionList = document.getElementById('sessionList');
+                sessionList.innerHTML = '';  // Limpiar la lista antes de agregar nuevos elementos
+
+                // Iterar sobre los datos de la sesión y agregar elementos a la lista
+                for (const key in data) {
+                    if (data.hasOwnProperty(key)) {
+                        const listItem = document.createElement('li');
+                        listItem.textContent = `${key}: ${JSON.stringify(data[key])}`;
+                        sessionList.appendChild(listItem);
+                    }
+                }
+            })
+            .catch(error => console.error('Error al obtener datos de sesión:', error));
+    }
+
+    // Llamar a la función al cargar la página para mostrar los datos de sesión inmediatamente
+    document.addEventListener('DOMContentLoaded', showSessionData);
 
 </script>
 

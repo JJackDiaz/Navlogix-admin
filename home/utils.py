@@ -6,6 +6,8 @@ import numpy as np
 from django.db.models import Count, F
 from sklearn.cluster import KMeans
 from sklearn.neighbors import NearestNeighbors
+from django.http import JsonResponse
+from django.contrib.sessions.backends.db import SessionStore
 
 from .models import Address, Route, Driver, Vehicle
 
@@ -109,40 +111,65 @@ def two_opt(route):
 
 def cluster_addresses(addresses, n_clusters):
 
-    print("cluster_addresses", addresses)
+    # Obtener la cantidad total de direcciones disponibles
+    total_addresses = sum(len(lista_direcciones) for lista_direcciones in addresses)
 
-    coordinates = np.array([[address['lat'], address['long']] for address in addresses])
+    # Asegurarse de que n_clusters no sea mayor que la cantidad de direcciones
+    n_clusters = min(n_clusters, total_addresses)
+
+    print("cluster NO", n_clusters)
+
+    coordinates = []
+
+    # Iterar sobre cada lista de direcciones
+    for lista_direcciones in addresses:
+        # Iterar sobre cada diccionario de dirección
+        for direccion in lista_direcciones:
+            # Extraer latitud y longitud
+            latitud = direccion['lat']
+            longitud = direccion['long']
+            coordinates.append([latitud, longitud])
+
+    # Convertir a array numpy
+    coordinates = np.array(coordinates)
+
+    print("cluster_addresses", coordinates)
 
     kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(coordinates)
     clustered_addresses = [[] for _ in range(n_clusters)]
 
-    for i, label in enumerate(kmeans.labels_):
-        clustered_addresses[label].append({
-            'street': addresses[i]['street'],
-            'number': addresses[i]['number'],
-            'lat': addresses[i]['lat'],
-            'long': addresses[i]['long']
-        })
+    # Iterar sobre cada lista de direcciones en addresses para asignarlas a los clusters
+    for i, lista_direcciones in enumerate(addresses):
+        # Iterar sobre cada dirección en la lista interna
+        for direccion in lista_direcciones:
+            # Obtener el cluster asignado por KMeans para esta dirección
+            label = kmeans.predict([[direccion['lat'], direccion['long']]])[0]
+            # Agregar la dirección al cluster correspondiente
+            clustered_addresses[label].append({
+                'street': direccion['street'],
+                'number': direccion['number'],
+                'lat': direccion['lat'],
+                'long': direccion['long']
+            })
 
     return clustered_addresses
 
 
-def optimize_and_save_routes(addresses, vehicles, request):
+def optimize_and_save_routes(addresses, vehicles):
     # Verificar la disponibilidad de conductores
     drivers = Driver.objects.annotate(num_routes=Count('route')).filter(num_routes__lt=F('vehicle__capacity'))
 
     if not drivers.exists():
         print("No hay conductores disponibles para asignar rutas.")
-        return
+        return {'error': 'No hay conductores disponibles para asignar rutas'}
 
     if not addresses or not vehicles:
         print("La lista de direcciones o vehículos está vacía.")
-        return
+        return {'error': 'La lista de direcciones o vehículos está vacía'}
 
     start_time = time.time()
 
-    today = datetime.date.today()
-
+    # Calcular el número de clusters
     n_clusters = len(vehicles)
     clustered_addresses = cluster_addresses(addresses, n_clusters)
 
@@ -152,7 +179,7 @@ def optimize_and_save_routes(addresses, vehicles, request):
         vehicle = vehicles[i]
         vehicle_routes[vehicle] = cluster
 
-    session_key = 'optimized_routes'  # Chave para armazenar na sessão
+    session_key = 'optimized_routes'  # Clave para almacenar en la sesión
 
     optimized_routes = {}
 
@@ -165,9 +192,18 @@ def optimize_and_save_routes(addresses, vehicles, request):
 
         optimized_routes[str(vehicle.id)] = [address for address in optimal_route]
 
-    request.session[session_key] = optimized_routes
+    # Crear una instancia de SessionStore
+    session_store = SessionStore()
 
-    print("Rutas optimizadas almacenadas en la sesión:", request.session[session_key])
+    # Guardar las rutas optimizadas en la sesión
+    session_store[session_key] = optimized_routes
+
+    # Guardar la sesión
+    session_store.save()
+
+    print("Rutas optimizadas almacenadas en la sesión:", session_store[session_key])
 
     execution_time = time.time() - start_time
     print(f"Tiempo de ejecución: {execution_time:.4f} segundos")
+
+    return {'message': 'Rutas optimizadas y almacenadas correctamente'}
