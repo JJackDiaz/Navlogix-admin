@@ -10,3 +10,5 @@ scikit-learn
 
 # psycopg2-binary
 # mysqlclient
+
+#pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg

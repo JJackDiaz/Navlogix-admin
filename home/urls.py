@@ -9,6 +9,7 @@ urlpatterns = [
     path('complete_form/', views.complete_form, name='complete_form'),
     path('upload/', views.upload_file_view, name='upload_file'),
     path('createroutes/', views.create_routes, name='create_routes'),
+    path('showroutes/', views.show_routes, name='show_routes'),
     path('get_session_data/', views.get_session_data, name='get_session_data'),
 ]
 

@@ -7,11 +7,11 @@ import datetime
 import json
 from django.contrib.auth.decorators import login_required
 from django.contrib.sessions.models import Session
+from django.shortcuts import get_object_or_404
 
-from django.shortcuts import render, redirect
-from django.http import HttpResponse
-from django.http import JsonResponse
+from django.http import HttpResponse, JsonResponse
 from .forms_steps import Step1Form, Step2Form, Step3Form
+from django.contrib.sessions.backends.db import SessionStore
 
 @login_required
 def index(request):
@@ -19,7 +19,6 @@ def index(request):
 
 @login_required
 def planning(request):
-
     step1_form = Step1Form()
     step2_form = Step2Form()
     step3_form = Step3Form()
@@ -27,7 +26,6 @@ def planning(request):
     today = datetime.date.today()
     routes = Route.objects.filter(parent_item__date=today)
     
-    # Obtener todos los choferes disponibles
     drivers = Driver.objects.all()
     
     routes_data = [
@@ -37,7 +35,7 @@ def planning(request):
             'latitude': route.address.latitude,
             'order': route.order,
             'description': route.parent_item.description,
-            'driver': route.driver.id  # Cambiado de 'drivers' a 'driver'
+            'driver': route.driver.id
         }
         for route in routes
     ]
@@ -52,57 +50,47 @@ def planning(request):
     
     return render(request, 'pages/planning/address.html', context)
 
+@login_required
 def save_step_data(request, step):
-
-    print(request,step)
     if request.method == 'POST':
         if step == 1:
-            selected_drivers = request.POST.getlist('drivers')
-            print(selected_drivers)
-            request.session['selected_drivers'] = selected_drivers
+            selected_vehicle_ids = request.POST.getlist('drivers')
+            print("IDs seleccionados:", selected_vehicle_ids)
+
+            #selected_vehicle_ids = [int(id) for id in selected_vehicle_ids]
+
+            # Consultar los objetos completos de los vehículos seleccionados
+            selected_vehicles = Vehicle.objects.filter(id__in=selected_vehicle_ids)
+
+            print("Vehículos seleccionados:", selected_vehicle_ids)
+            print("Vehículos seleccionados:", selected_vehicles)
+
+            # Guardar los objetos completos de los vehículos en la sesión
+            request.session['selected_drivers'] = list(selected_vehicles.values())
+
             return JsonResponse({'status': 'success'})
         elif step == 2:
             uploaded_addresses = request.session.get('uploaded_addresses')
             if uploaded_addresses:
-                create_routes(uploaded_addresses)
+                aa = create_routes(request)
+                print("CREATE RUTES",aa)
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Invalid step'})
         elif step == 3:
             form = Step3Form(request.POST)
             if form.is_valid():
-                print("ENTRO")
                 request.session[f'step{step}_data'] = form.cleaned_data
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'errors': form.errors})
-        else:
-            return JsonResponse({'status': 'error', 'message': 'Invalid step'})
-
-        if form.is_valid():
-            request.session[f'step{step}_data'] = form.cleaned_data
-            return JsonResponse({'status': 'success'})
-        else:
-            return JsonResponse({'status': 'error', 'errors': form.errors})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
-
-# @login_required
-# def upload_file_view(request):
-#     if request.method == 'POST':
-#         form = UploadFileForm(request.POST, request.FILES)
-#         if form.is_valid():
-#             handle_uploaded_file(request.FILES['file'])
-#             return redirect('address')
-#     else:
-#         form = UploadFileForm()
-#     return render(request, 'upload.html', {'form': form})
 
 @login_required
 def upload_file_view(request):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
         if form.is_valid():
-            # Lê o arquivo enviado
             uploaded_file = request.FILES['file']
             try:
                 df = pd.read_excel(uploaded_file)
@@ -110,22 +98,19 @@ def upload_file_view(request):
                 print(f"Error al leer el archivo: {e}")
                 return HttpResponseBadRequest("Error al leer el archivo")
 
-            # Verifica se o arquivo tem as colunas esperadas
             expected_columns = ['street', 'number', 'city', 'lat', 'long']
             for col in expected_columns:
                 if col not in df.columns:
                     print(f"Error: Falta la columna '{col}' en el archivo.")
                     return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
 
-            # Armazena o DataFrame na sessão
             request.session['uploaded_addresses'] = df.to_dict(orient='records')
-
             return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
     else:
         form = UploadFileForm()
     return render(request, 'upload.html', {'form': form})
 
-#--------------- VALIDACION FORMULARIO 3 PASOS ------------------------
+@login_required
 def upload_routes(request, step):
     if request.method == 'POST':
         form = UploadFileForm(request.POST, request.FILES)
@@ -143,57 +128,64 @@ def upload_routes(request, step):
                     print(f"Error: Falta la columna '{col}' en el archivo.")
                     return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
 
-            # Armazena o DataFrame na sessão
-            print(df.to_dict(orient='records'))
             request.session['uploaded_addresses'] = df.to_dict(orient='records')
-
-
             return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
-        
     return JsonResponse({'status': 'error', 'message': 'No se recibió ningún archivo o método incorrecto'})
 
+@login_required
 def get_session_data(request):
-    session_key = 'optimized_routes'  # Clave para obtener de la sesión
-
-    # Obtener el ID de la sesión actual (puedes ajustar esto según tu lógica de manejo de sesiones)
+    session_key = 'optimized_routes'
     session_id = request.session.session_key
 
     try:
-        # Obtener el objeto Session de la base de datos
         db_session = Session.objects.get(session_key=session_id)
-
-        # Obtener los datos de sesión asociados con la clave
         session_data = db_session.get_decoded().get(session_key, {})
-
         return JsonResponse(session_data)
     except Session.DoesNotExist:
         return JsonResponse({'error': 'No se encontró la sesión'}, status=404)
 
-    
+@login_required
 def create_routes(request):
+    step1_data = request.session.get('selected_drivers')
 
+    print(step1_data)
 
-        print("createroutes")
-        print(request)
+    if not step1_data:
+        return JsonResponse({'status': 'error', 'message': 'Selected drivers not found in session'}, status=400)
+    
+    created_addresses = request.session.get('uploaded_addresses', [])
+    if not created_addresses:
+        return JsonResponse({'status': 'error', 'message': 'No addresses found'}, status=400)
+    
+    vehicles = Vehicle.objects.all()
+    optimize_and_save_routes(created_addresses, step1_data)
+    
+    return JsonResponse({'status': 'success', 'addresses': created_addresses})
 
-        created_addresses = []
-        created_addresses.append(request)
+@login_required
+def show_routes(request):
+    # Obtener los datos guardados en la sesión
+    step2_data = request.session.get('uploaded_addresses')
 
-        # Chamando a função para otimizar e salvar as rotas
-        vehicles = Vehicle.objects.all()
-        optimize_and_save_routes(created_addresses, vehicles)
+    if not step2_data:
+        return JsonResponse({'status': 'error', 'message': 'Uploaded addresses not found in session'}, status=400)
+    
+     # Obtener las rutas optimizadas de la sesión
+    session_key = 'optimized_routes'  # La clave de sesión donde se guardaron las rutas optimizadas
+    session_store = SessionStore()
+    
+    optimized_routes = request.session[session_key]
         
+    return JsonResponse({'status': 'success', 'optimized_routes': optimized_routes})
 
-        return JsonResponse({'status': 'success', 'addresses': request})
-
+@login_required
 def complete_form(request):
     try:
-
         step1_data = request.session.get('selected_drivers')
         step2_data = request.session.get('uploaded_addresses')
 
-        print(step1_data)
-        #print(step2_data)
+        if not step1_data or not step2_data:
+            raise Exception('Incomplete session data')
         
         return JsonResponse({'status': 'success', 'message': 'Formulario completado exitosamente.'})
     except Exception as e:
