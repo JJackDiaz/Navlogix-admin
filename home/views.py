@@ -10,7 +10,7 @@ from django.contrib.sessions.models import Session
 from django.shortcuts import get_object_or_404
 
 from django.http import HttpResponse, JsonResponse
-from .forms_steps import Step1Form, Step2Form, Step3Form
+from .forms_steps import Step1Form, Step2Form
 from django.contrib.sessions.backends.db import SessionStore
 
 @login_required
@@ -21,7 +21,7 @@ def index(request):
 def planning(request):
     step1_form = Step1Form()
     step2_form = Step2Form()
-    step3_form = Step3Form()
+    #step3_form = Step3Form()
     
     today = datetime.date.today()
     routes = Route.objects.filter(parent_item__date=today)
@@ -43,7 +43,6 @@ def planning(request):
     context = {
         'step1_form': step1_form,
         'step2_form': step2_form,
-        'step3_form': step3_form,
         'routes': json.dumps(routes_data),
         'drivers': drivers,
     }
@@ -55,32 +54,26 @@ def save_step_data(request, step):
     if request.method == 'POST':
         if step == 1:
             selected_vehicle_ids = request.POST.getlist('drivers')
-            print("IDs seleccionados:", selected_vehicle_ids)
+            
+            if selected_vehicle_ids:
+                # Consultar los objetos completos de los vehículos seleccionados
+                selected_vehicles = Vehicle.objects.filter(id__in=selected_vehicle_ids)
 
-            #selected_vehicle_ids = [int(id) for id in selected_vehicle_ids]
+                # Guardar los objetos completos de los vehículos en la sesión
+                request.session['selected_drivers'] = list(selected_vehicles.values())
 
-            # Consultar los objetos completos de los vehículos seleccionados
-            selected_vehicles = Vehicle.objects.filter(id__in=selected_vehicle_ids)
-
-            print("Vehículos seleccionados:", selected_vehicle_ids)
-            print("Vehículos seleccionados:", selected_vehicles)
-
-            # Guardar los objetos completos de los vehículos en la sesión
-            request.session['selected_drivers'] = list(selected_vehicles.values())
-
-            return JsonResponse({'status': 'success'})
+                return JsonResponse({'status': 'success'})
+            else:
+                return JsonResponse({'status': 'error', 'message': 'Selecciona un chofer'})
         elif step == 2:
             uploaded_addresses = request.session.get('uploaded_addresses')
             if uploaded_addresses:
-                aa = create_routes(request)
-                print("CREATE RUTES",aa)
+                create_routes(request)
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'message': 'Invalid step'})
-        elif step == 3:
-            form = Step3Form(request.POST)
-            if form.is_valid():
-                request.session[f'step{step}_data'] = form.cleaned_data
+        else:
+            if request.session.get('optimized_routes'):
                 return JsonResponse({'status': 'success'})
             else:
                 return JsonResponse({'status': 'error', 'errors': form.errors})
@@ -158,7 +151,15 @@ def create_routes(request):
         return JsonResponse({'status': 'error', 'message': 'No addresses found'}, status=400)
     
     vehicles = Vehicle.objects.all()
-    optimize_and_save_routes(created_addresses, step1_data)
+    result = optimize_and_save_routes(created_addresses, step1_data)
+
+    if 'error' in result:
+        return JsonResponse({'status': 'error', 'message': result['error']}, status=400)
+
+
+    request.session['optimized_routes'] = result
+
+    print("Rutas optimizadas almacenadas en la sesión:", request.session.get('optimized_routes'))
     
     return JsonResponse({'status': 'success', 'addresses': created_addresses})
 
@@ -174,7 +175,7 @@ def show_routes(request):
     session_key = 'optimized_routes'  # La clave de sesión donde se guardaron las rutas optimizadas
     session_store = SessionStore()
     
-    optimized_routes = request.session[session_key]
+    optimized_routes = request.session['optimized_routes']
         
     return JsonResponse({'status': 'success', 'optimized_routes': optimized_routes})
 

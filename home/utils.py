@@ -214,7 +214,7 @@ def optimize_and_save_routes(addresses, vehicles):
     execution_time = time.time() - start_time
     print(f"Tiempo de ejecución: {execution_time:.4f} segundos")
 
-    return JsonResponse({'status': 'success', 'routes': optimized_routes})
+    return {'status': 'success', 'routes': optimized_routes}
 
 
 

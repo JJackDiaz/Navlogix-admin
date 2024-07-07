@@ -7,5 +7,4 @@ class Step1Form(forms.Form):
 class Step2Form(forms.Form):
     file = forms.FileField(label='Seleccionar archivo CSV', widget=forms.FileInput(attrs={'id': 'file', 'class': 'form-control mb-3'}))
 
-class Step3Form(forms.Form):
-    phone = forms.CharField(max_length=15)
+
