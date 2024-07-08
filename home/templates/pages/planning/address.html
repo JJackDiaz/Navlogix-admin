@@ -54,18 +54,21 @@
                                             {{ step2_form.as_p }}
                                             <button type="button" class="btn btn-primary mb-3" onclick="uploadFile()">Subir Archivo</button>
                                         </form>
-                    
-                                        <!-- List of Uploaded Addresses -->
-                                        <div class="addresses-container flex-grow-1 overflow-auto">
-                                            <div class="addresses-list">
-                                                <!-- This list will be populated dynamically -->
-                                                <ul id="addresses-list">
+
+                                        <div id="driver-list" class="scrollable-list" style="max-height: 450px; overflow-y: auto;">
+                        
+                                            <div class="addresses-container flex-grow-1 overflow-auto">
+                                                <div class="addresses-list">
                                                     <!-- This list will be populated dynamically -->
-                                                </ul>
+                                                    <ul id="addresses-list">
+                                                        <!-- This list will be populated dynamically -->
+                                                    </ul>
+                                                </div>
+                                                
+                                                <!-- Navigation Buttons -->
                                             </div>
-                                            
-                                            <!-- Navigation Buttons -->
                                         </div>
+                    
                                     </div>
                                     <div class="text-center">
                                         <button type="button" class="btn btn-primary mx-2" onclick="previousStep(2)">Previous</button>
@@ -104,8 +107,10 @@
                             <div class="col-md-4 d-flex flex-column">
                                 <div class="card h-100">
                                     <div class="card-body">
-                                        <div id="accordionFlushExample" style="max-height: 100%;overflow-y: auto;">
-                                            <!-- Acordeón contenido -->
+                                        <div id="driver-list" class="scrollable-list" style="max-height: 480px; overflow-y: auto;">
+                                            <div id="accordionFlushExample" style="max-height: 100%;overflow-y: auto;">
+                                                <!-- Acordeón contenido -->
+                                            </div>
                                         </div>
                                     </div>
                                     <button type="button" class="btn btn-primary mx-6" onclick="submitStep(3)">Completar</button>
@@ -114,7 +119,7 @@
                             <div class="col-md-8">
                                 <div class="card h-100">
                                     <div class="card-body">
-                                        <div id="map3" style="width: 200%; height: 200%;"></div>
+                                        <div id="map3" style="width: 100%; height: 100%;"></div>
                                     </div>
                                 </div>
                             </div>
@@ -180,6 +185,8 @@
                         $('#step' + (step + 1)).show();
                     }else {
                         completeForm();
+                        alert(response);
+                        window.location.href = 'http://127.0.0.1:8000/address';
                     }
                 } else {
                     alert('Errorss: ' + JSON.stringify(response.errors));
@@ -271,7 +278,7 @@
                     button.setAttribute('aria-controls', `collapse${vehicleId}`);
                     button.textContent = `Chofer ${vehicleId}`;
                     button.onclick = () => {
-                        markRouteOnMap(vehicleRoutes);
+                        markRouteOnMap(vehicleRoutes, vehicleId);
                     };
 
                     header.appendChild(button);
@@ -315,14 +322,17 @@
 let marker3;
 let bounds;
 
-function markRouteOnMap(routes) {
+function markRouteOnMap(routes, driver) {
     // Limpiar el mapa y resetear variables
     clearMap();
 
     // Inicializar los límites del mapa
     bounds = new mapboxgl.LngLatBounds();
 
-    routes.forEach(function(route) {
+    var bounds = new mapboxgl.LngLatBounds();
+    var routeCoordinates = [];
+
+    routes.forEach(function(route, indice) {
         var lat = parseFloat(route.lat) / 1000000; 
         var lng = parseFloat(route.long) / 1000000;
         
@@ -330,15 +340,46 @@ function markRouteOnMap(routes) {
             console.error('Coordenadas inválidas para la ruta:', route);
             return;  // Saltar esta ruta si las coordenadas no son válidas
         }
+
+        var colors = [
+            'red', 'blue', 'green', 'yellow', 'purple', 'orange', 'pink', 'brown', 'black', 'skyblue',
+            'magenta', 'cyan', 'lime', 'maroon', 'navy', 'olive', 'teal', 'violet', 'gold', 'silver',
+            'coral', 'chocolate', 'crimson', 'indigo', 'ivory', 'khaki', 'lavender', 'turquoise', 'plum', 'orchid', 'salmon', 'sienna', 'tan', 'wheat', 'aqua', 'azure', 'beige', 'bisque', 'chartreuse', 'fuchsia', 'gainsboro', 'ghostwhite', 'honeydew', 'hotpink', 'lavenderblush', 'lightblue', 'lightcoral', 'lightgreen', 'lightpink', 'lightsalmon'
+        ];
         
-        // Crear un marcador para cada dirección válida y añadirlo al mapa
-        marker3 = new mapboxgl.Marker()
-            .setLngLat([lng, lat])
-            .setPopup(new mapboxgl.Popup().setHTML('<h6>' + route.street + '</h6><p>Descripción: ' + route.description + '</p>'))
-            .addTo(map3);
-        
-        // Extender los límites del mapa para incluir este marcador
-        bounds.extend([lng, lat]);
+        console.log("showRoute" + driver);
+            //if (route.driver == driverId){
+                console.log("aca");
+                if(lng && lat) {
+                    console.log("aqui");
+                    console.log(indice);
+
+                    var el = document.createElement('div');
+                    el.className = 'marker';
+                    el.style.backgroundColor = colors[driver - 1];  
+                    el.style.width = '20px';
+                    el.style.height = '20px';
+                    el.style.borderRadius = '50%';
+                    el.style.display = 'flex';
+                    el.style.alignItems = 'center';
+                    el.style.justifyContent = 'center';
+                    el.style.color = 'white';
+                    el.style.fontSize = '12px';
+                    el.style.fontWeight = 'bold';
+                    el.innerText = indice +1;
+
+                    new mapboxgl.Marker(el)
+                        .setLngLat([lng, lat])
+                        .setPopup(new mapboxgl.Popup({ offset: 20 })
+                            .setText(`(${route.driver}) Destino ${route.order}: ${route.street} - ${route.description}`))
+                        .addTo(map3);
+
+                    bounds.extend([lng, lat]);
+                    routeCoordinates.push([lng, lat]);
+                } else {
+                    console.error('Invalid coordinates for route:', route);
+                }   
+            //}
     });
 
     // Ajustar el mapa para que todos los marcadores sean visibles

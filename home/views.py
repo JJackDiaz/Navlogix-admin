@@ -165,13 +165,12 @@ def create_routes(request):
 
 @login_required
 def show_routes(request):
-    # Obtener los datos guardados en la sesión
+    
     step2_data = request.session.get('uploaded_addresses')
 
     if not step2_data:
         return JsonResponse({'status': 'error', 'message': 'Uploaded addresses not found in session'}, status=400)
     
-     # Obtener las rutas optimizadas de la sesión
     session_key = 'optimized_routes'  # La clave de sesión donde se guardaron las rutas optimizadas
     session_store = SessionStore()
     
@@ -182,11 +181,25 @@ def show_routes(request):
 @login_required
 def complete_form(request):
     try:
-        step1_data = request.session.get('selected_drivers')
+        #step1_data = request.session.get('selected_drivers')
         step2_data = request.session.get('uploaded_addresses')
+        step3_data = request.session.get('optimized_routes')
+
+        print("ADDRESS", step2_data)
+        print("ROUTE", step3_data)
 
         if not step1_data or not step2_data:
             raise Exception('Incomplete session data')
+
+        for address in step2_data:
+            save_data = Address(
+                street=address['street'],
+                number=address['number'],
+                city=address['city'],
+                lat=address['lat'],
+                long=address['long']
+            )
+            save_data.save()
         
         return JsonResponse({'status': 'success', 'message': 'Formulario completado exitosamente.'})
     except Exception as e:
