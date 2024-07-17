@@ -7,7 +7,8 @@ python-dotenv
 whitenoise
 django-admin-soft-dashboard==1.0.11
 scikit-learn
-pip install djangorestframework
+djangorestframework
+django-cors-headers
 
 
 # psycopg2-binary
