@@ -7,6 +7,8 @@ python-dotenv
 whitenoise
 django-admin-soft-dashboard==1.0.11
 scikit-learn
+pip install djangorestframework
+
 
 # psycopg2-binary
 # mysqlclient

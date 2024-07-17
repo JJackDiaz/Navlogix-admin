@@ -15,7 +15,7 @@
                                         <form id="step1_form" method="post">
                                             {% csrf_token %}
                                             <div class="mb-3">
-                                                <label for="id_drivers" class="form-label">Choferes disponibles:</label>
+                                                <label for="id_drivers" class="form-label">Flotas:</label>
                                                 <input type="text" id="driver-search" class="form-control mb-2" placeholder="Buscar chofer...">
                                                 <div id="driver-list" class="scrollable-list" style="max-height: 300px; overflow-y: auto;">
                                                     {% for driver in drivers %}

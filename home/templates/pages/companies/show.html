@@ -1,0 +1,23 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row h-100">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-3 h-30">
+                    <h3>{{ company.name }}</h3>
+                    <p><strong>Address:</strong> {{ company.address }}</p>
+                    <p><strong>Phone:</strong> {{ company.phone }}</p>
+                    <p><strong>Email:</strong> {{ company.email }}</p>
+                    <a href="{% url 'companies_index' %}" class="btn btn-primary">Back to List</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "includes/footer.html" %}
+
+{% endblock content %}

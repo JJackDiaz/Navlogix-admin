@@ -1,0 +1,37 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div class="container-fluid py-4">
+    <div class="row h-100">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
+            <div class="card">
+                <div class="card-body p-1">
+                    <div class="row">
+                        <div class="col-12">
+                            <div class="card-header d-flex justify-content-between align-items-center">
+                                <h5 class="card-title">Create User for {{ company.name }}</h5>
+                            </div>
+                            <div class="card-body">
+                                <form method="post">
+                                    {% csrf_token %}
+                                    {{ form.as_p }}
+                                    <button type="submit" class="btn btn-success">Create User</button>
+                                </form>
+                                <a href="{% url 'company_users' company.id %}" class="btn btn-secondary mt-3">Back to Users</a>
+                            </div>
+                        </div>
+                    </div>   
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+{% include "includes/footer.html" %}
+
+{% endblock content %}
+
+{% block scripts %}
+<!-- Aquí puedes agregar scripts adicionales si los necesitas -->
+{% endblock scripts %}

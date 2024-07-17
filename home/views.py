@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
-from .forms import UploadFileForm
-from .models import Address, Route, Driver, Vehicle, ParentItem
+from .forms import UploadFileForm, CompanyForm, UserProfileCreationForm
+from .models import Address, Route, Driver, Vehicle, ParentItem, Company , UserProfile, Fleet
 from .utils import optimize_and_save_routes
 import pandas as pd
 import datetime
@@ -12,6 +12,11 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from .forms_steps import Step1Form, Step2Form
 from django.contrib.sessions.backends.db import SessionStore
+
+#ROLES
+from .decorators import group_required
+
+#groups = ['admin', 'driver', 'user']
 
 @login_required
 def index(request):
@@ -181,7 +186,7 @@ def show_routes(request):
 @login_required
 def complete_form(request):
     try:
-        #step1_data = request.session.get('selected_drivers')
+        step1_data = request.session.get('selected_drivers')
         step2_data = request.session.get('uploaded_addresses')
         step3_data = request.session.get('optimized_routes')
 
@@ -196,8 +201,8 @@ def complete_form(request):
                 street=address['street'],
                 number=address['number'],
                 city=address['city'],
-                lat=address['lat'],
-                long=address['long']
+                latitude=address['lat'],
+                longitude=address['long']
             )
             save_data.save()
         
@@ -205,3 +210,100 @@ def complete_form(request):
     except Exception as e:
         print(f'Error al completar el formulario: {str(e)}')
         return JsonResponse({'status': 'error', 'message': 'Error al procesar el formulario. Por favor, inténtalo de nuevo más tarde.'})
+
+#FLOTAS
+@login_required
+def fleets_index(request):
+    fleets = Fleet.objects.all()
+    context = {
+        'fleets': fleets,
+    }
+    return render(request, 'pages/fleet/index.html', context)
+
+@login_required
+def fleets_detail(request, id):
+    fleet = get_object_or_404(Fleet, id=id)
+    vehicles = Vehicle.objects.filter(fleet=fleet)
+    context = {
+        'fleet': fleet,
+        'vehicles': vehicles,
+    }
+    return render(request, 'pages/fleet/show.html', context)
+
+#COMPANIES
+
+@login_required
+def companies_index(request):
+    companies = Company.objects.all()
+    context = {
+        'companies': companies,
+    }
+    return render(request, 'pages/companies/index.html', context)
+
+@login_required
+def company_detail(request, id):
+    company = get_object_or_404(Company, id=id)
+    context = {
+        'company': company,
+    }
+    return render(request, 'pages/companies/show.html', context)
+
+@login_required
+def company_delete(request, id):
+    company = get_object_or_404(Company, id=id)
+    if request.method == 'POST':
+        company.delete()
+        return redirect('companies_index')
+    context = {
+        'company': company,
+    }
+    return render(request, 'pages/companies/confirm_delete.html', context)
+
+@login_required
+def company_create(request):
+    if request.method == 'POST':
+        form = CompanyForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('companies_index')
+    else:
+        form = CompanyForm()
+    context = {
+        'form': form,
+    }
+    return render(request, 'pages/companies/create.html', context)
+
+@login_required
+@group_required('admin')
+def company_users(request, company_id):
+    company = get_object_or_404(Company, pk=company_id)
+    users = UserProfile.objects.filter(company=company)
+    context = {
+        'company': company,
+        'users': users,
+    }
+    return render(request, 'pages/companies/users.html', context)
+
+@login_required
+@group_required('admin')
+def user_create(request, company_id):
+    company = get_object_or_404(Company, pk=company_id)
+    if request.method == 'POST':
+        form = UserProfileCreationForm(request.POST)
+        if form.is_valid():
+            form.save()
+            return redirect('company_users', company_id=company.id)
+    else:
+        form = UserProfileCreationForm(initial={'company': company})
+
+    context = {
+        'form': form,
+        'company': company,
+    }
+    return render(request, 'pages/companies/user_create.html', context)
+
+
+def no_permission(request):
+    return render(request, 'no_permission.html')
+    
+
