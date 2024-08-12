@@ -10,7 +10,11 @@ from django.http import JsonResponse
 from django.contrib.sessions.backends.db import SessionStore
 from django.core.cache import cache
 
-from .models import Address, Route, Driver, Vehicle
+from .models import Address, Route, Vehicle
+from django.contrib.auth.models import User
+
+from sklearn.cluster import DBSCAN
+from sklearn.metrics.pairwise import haversine_distances
 
 def calculate_distance(address1, address2):
     R = 6371.0
@@ -40,20 +44,24 @@ def optimize_route_for_vehicle(route_addresses):
 
     # Inicializar la ruta con la primera dirección
     route = [route_addresses[0]]
-    remaining_indices = set(range(1, len(route_addresses)))
+    remaining_addresses = route_addresses[1:]
 
-    current_index = 0
-    while remaining_indices:
-        # Encontrar los vecinos más cercanos a la última dirección en la ruta
-        distances, indices = neighbors.kneighbors(locations[current_index].reshape(1, -1), n_neighbors=len(route_addresses))
+    while remaining_addresses:
+        # Encontrar el vecino más cercano a la última dirección en la ruta
+        distances, indices = neighbors.kneighbors(np.array([route[-1]['lat'], route[-1]['long']]).reshape(1, -1))
         for idx in indices[0][1:]:
-            if idx in remaining_indices:
-                route.append(route_addresses[idx])
-                remaining_indices.remove(idx)
-                current_index = idx
+            nearest_address = route_addresses[idx]
+            if nearest_address in remaining_addresses:
+                route.append(nearest_address)
+                remaining_addresses.remove(nearest_address)
                 break
 
-    return route
+    # Aplicar la optimización 2-opt
+    optimized_route = two_opt(route)
+    
+    return optimized_route
+
+
 
 def optimize_route_for_vehicle2(route_addresses):
     if not route_addresses or len(route_addresses) < 2:
@@ -110,111 +118,69 @@ def two_opt(route):
     
     return best_route
 
-from sklearn.cluster import KMeans
-import numpy as np
-
 def cluster_addresses(addresses, n_clusters):
-    # Obtener la cantidad total de direcciones disponibles
-    total_addresses = sum(len(lista_direcciones) for lista_direcciones in addresses)
+    coordinates = np.array([[address['lat'], address['long']] for address in addresses])
+    radians = np.radians(coordinates)
+    distances = haversine_distances(radians)
 
-    # Asegurar que el número de clusters no sea mayor que el número total de direcciones
-    n_clusters = min(n_clusters, total_addresses)
-
-    coordinates = []
-
-    # Iterar sobre cada lista de direcciones
-    for lista_direcciones in addresses:
-        
-        # Asegurarse de que direccion sea un diccionario válido
-        if isinstance(lista_direcciones, dict):
-            # Extraer latitud y longitud si están presentes
-            latitud = lista_direcciones.get('lat')
-            longitud = lista_direcciones.get('long')
-            if latitud is not None and longitud is not None:
-                coordinates.append([latitud, longitud])
-            else:
-                print(f"Advertencia: Dirección incompleta sin coordenadas: {direccion}")
+    # DBSCAN puede no dar exactamente `n_clusters` clusters, ajustar `eps` y `min_samples` según sea necesario
+    db = DBSCAN(eps=0.01, min_samples=1, metric='precomputed')
+    labels = db.fit_predict(distances)
     
-    print("CORDINATES2", coordinates)
+    # Map labels to clusters
+    unique_labels = np.unique(labels)
+    if len(unique_labels) < n_clusters:
+        n_clusters = len(unique_labels)
+    
+    # Crear lista de listas para clusters
+    clustered_addresses = [[] for _ in range(n_clusters)]
+    for i, label in enumerate(labels):
+        cluster_index = min(label, n_clusters - 1)  # Asegurarse de no exceder el número de clusters
+        clustered_addresses[cluster_index].append(addresses[i])
 
-    # Convertir a array numpy si hay coordenadas válidas
-    if coordinates:
-        coordinates = np.array(coordinates)
-
-        # Aplicar KMeans para clusterizar las coordenadas
-        kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(coordinates)
-        clustered_addresses = [[] for _ in range(n_clusters)]
-
-        # Asignar cada dirección al cluster correspondiente según KMeans
-        for direccion in addresses:
-            latitud = direccion.get('lat')
-            longitud = direccion.get('long')
-            if latitud is not None and longitud is not None:
-                # Obtener el cluster asignado por KMeans para esta dirección
-                label = kmeans.predict([[latitud, longitud]])[0]
-                # Agregar la dirección al cluster correspondiente
-                clustered_addresses[label].append({
-                    'street': direccion.get('street', ''),
-                    'number': direccion.get('number', ''),
-                    'lat': latitud,
-                    'long': longitud
-                })
-
-        return clustered_addresses
-    else:
-        print("Advertencia: No se encontraron coordenadas válidas en las direcciones proporcionadas.")
-        return [[] for _ in range(n_clusters)]
-
-
+    return clustered_addresses
 
 def optimize_and_save_routes(addresses, vehicles):
-    # Verificar la disponibilidad de conductores
-    drivers = Driver.objects.annotate(num_routes=Count('route')).filter(num_routes__lt=F('vehicle__capacity'))
-
-    print("DIRECCCIONES",addresses)
-
-    if not drivers.exists():
-        print("No hay conductores disponibles para asignar rutas.")
-        return {'error': 'No hay conductores disponibles para asignar rutas'}
-
     if not addresses or not vehicles:
-        print("La lista de direcciones o vehículos está vacía.")
         return {'error': 'La lista de direcciones o vehículos está vacía'}
 
     start_time = time.time()
 
-    # Calcular el número de clusters
     n_clusters = len(vehicles)
-    print("NUMERO",n_clusters)
     clustered_addresses = cluster_addresses(addresses, n_clusters)
 
-    # Crear un diccionario vacío para almacenar las rutas de los vehículos
     vehicle_routes = {vehicle['id']: [] for vehicle in vehicles}
 
-    print(clustered_addresses)
-
     for i, cluster in enumerate(clustered_addresses):
-        vehicle_id = vehicles[i]['id']
-        vehicle_routes[vehicle_id] = cluster
-
-    session_key = 'optimized_routes'  # Clave para almacenar en la sesión
+        if i < n_clusters:
+            vehicle_id = vehicles[i]['id']
+            vehicle_routes[vehicle_id] = cluster
 
     optimized_routes = {}
 
     for vehicle_id, route_addresses in vehicle_routes.items():
         optimal_route = optimize_route_for_vehicle(route_addresses)
-        print(f"RUTA para vehículo ID {vehicle_id}:")
+        vehicle_route_with_order = []
+
         for i, address in enumerate(optimal_route):
             order = i + 1
-            print(f"  Destino {order}: {address['street']} {address['number']}, ({address['lat']}, {address['long']})")
+            address_with_order = {
+                'vehicle_id': vehicle_id,
+                'order': order,
+                'street': address['street'],
+                'number': address['number'],
+                'lat': address['lat'],
+                'long': address['long']
+            }
+            vehicle_route_with_order.append(address_with_order)
 
-        optimized_routes[str(vehicle_id)] = optimal_route  # Asignar las rutas optimizadas directamente
-
+        optimized_routes[str(vehicle_id)] = vehicle_route_with_order
 
     execution_time = time.time() - start_time
     print(f"Tiempo de ejecución: {execution_time:.4f} segundos")
 
     return {'status': 'success', 'routes': optimized_routes}
+
 
 
 

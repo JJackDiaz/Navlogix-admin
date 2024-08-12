@@ -1,6 +1,7 @@
 from django.shortcuts import render, redirect
 from .forms import UploadFileForm, CompanyForm, UserProfileCreationForm
-from .models import Address, Route, Driver, Vehicle, ParentItem, Company , UserProfile, Fleet
+from .models import Address, Route, Vehicle, ParentItem, Company , UserProfile, Fleet
+from django.contrib.auth.models import User
 from .utils import optimize_and_save_routes
 import pandas as pd
 import datetime
@@ -12,11 +13,18 @@ from django.shortcuts import get_object_or_404
 from django.http import HttpResponse, JsonResponse
 from .forms_steps import Step1Form, Step2Form
 from django.contrib.sessions.backends.db import SessionStore
+from django.core.paginator import Paginator
+
+from django.template.loader import render_to_string
+
 
 #ROLES
 from .decorators import group_required
 
 #groups = ['admin', 'driver', 'user']
+
+#python manage.py migrate sessions
+
 
 @login_required
 def index(request):
@@ -24,35 +32,36 @@ def index(request):
 
 @login_required
 def planning(request):
-    step1_form = Step1Form()
-    step2_form = Step2Form()
-    #step3_form = Step3Form()
-    
     today = datetime.date.today()
     routes = Route.objects.filter(parent_item__date=today)
+
+    # Obtener datos de la sesión
+    step2_data = request.session.get('uploaded_addresses')
     
-    drivers = Driver.objects.all()
+    Vehicles = Vehicle.objects.all()
     
+    # Si existen direcciones cargadas en la sesión, incluirlas en el contexto
     routes_data = [
         {
-            'address': route.address.street + ' ' + route.address.number + ', ' + route.address.city,
-            'longitude': route.address.longitude,
-            'latitude': route.address.latitude,
+            'address': route.street + ' ' + route.number + ', ' + route.city,
+            'longitude': route.longitude,
+            'latitude': route.latitude,
             'order': route.order,
             'description': route.parent_item.description,
-            'driver': route.driver.id
+            'driver': route.vehicle.id
         }
         for route in routes
     ]
     
     context = {
-        'step1_form': step1_form,
-        'step2_form': step2_form,
         'routes': json.dumps(routes_data),
-        'drivers': drivers,
+        'vehicles': Vehicles,
     }
     
-    return render(request, 'pages/planning/address.html', context)
+    if step2_data:
+        context['uploaded_addresses'] = step2_data
+    
+    return render(request, 'pages/planning/index.html', context)
 
 @login_required
 def save_step_data(request, step):
@@ -61,6 +70,12 @@ def save_step_data(request, step):
             selected_vehicle_ids = request.POST.getlist('drivers')
             
             if selected_vehicle_ids:
+
+                try:
+                    selected_vehicle_ids = [int(vehicle_id) for vehicle_id in selected_vehicle_ids]
+                except ValueError:
+                    raise Exception("Invalid vehicle ID detected.")
+
                 # Consultar los objetos completos de los vehículos seleccionados
                 selected_vehicles = Vehicle.objects.filter(id__in=selected_vehicle_ids)
 
@@ -146,8 +161,6 @@ def get_session_data(request):
 def create_routes(request):
     step1_data = request.session.get('selected_drivers')
 
-    print(step1_data)
-
     if not step1_data:
         return JsonResponse({'status': 'error', 'message': 'Selected drivers not found in session'}, status=400)
     
@@ -155,7 +168,9 @@ def create_routes(request):
     if not created_addresses:
         return JsonResponse({'status': 'error', 'message': 'No addresses found'}, status=400)
     
-    vehicles = Vehicle.objects.all()
+    #print("PASO 2 ",step1_data)
+    #print("PASO 2 ",created_addresses)
+
     result = optimize_and_save_routes(created_addresses, step1_data)
 
     if 'error' in result:
@@ -175,8 +190,7 @@ def show_routes(request):
 
     if not step2_data:
         return JsonResponse({'status': 'error', 'message': 'Uploaded addresses not found in session'}, status=400)
-    
-    session_key = 'optimized_routes'  # La clave de sesión donde se guardaron las rutas optimizadas
+
     session_store = SessionStore()
     
     optimized_routes = request.session['optimized_routes']
@@ -190,33 +204,85 @@ def complete_form(request):
         step2_data = request.session.get('uploaded_addresses')
         step3_data = request.session.get('optimized_routes')
 
-        print("ADDRESS", step2_data)
-        print("ROUTE", step3_data)
-
-        if not step1_data or not step2_data:
+        if not step1_data or not step2_data or not step3_data:
             raise Exception('Incomplete session data')
 
-        for address in step2_data:
-            save_data = Address(
-                street=address['street'],
-                number=address['number'],
-                city=address['city'],
-                latitude=address['lat'],
-                longitude=address['long']
-            )
-            save_data.save()
-        
+        company_id = step2_data[0]['company']
+
+        parent_item = ParentItem.objects.create(
+            company_id=company_id,
+        )
+
+        routes = step3_data.get('routes', {})
+
+        for vehicle_id, route_list in routes.items():
+            vehicle_instance = Vehicle.objects.get(id=vehicle_id)
+            
+            for route in route_list:
+                route_data = Route(
+                    street=route['street'],
+                    number=route['number'],
+                    city='City Name',  # Deberías ajustar esto según tus datos
+                    latitude=route['lat'],
+                    longitude=route['long'],
+                    vehicle=vehicle_instance,
+                    parent_item=parent_item,
+                    order=route['order'],
+                )
+                route_data.save()
+
+        del request.session['selected_drivers']
+        del request.session['uploaded_addresses']
+        del request.session['optimized_routes']
+
         return JsonResponse({'status': 'success', 'message': 'Formulario completado exitosamente.'})
     except Exception as e:
         print(f'Error al completar el formulario: {str(e)}')
         return JsonResponse({'status': 'error', 'message': 'Error al procesar el formulario. Por favor, inténtalo de nuevo más tarde.'})
 
+
+
+
+#PLANNING MANAGEMENT
+@login_required
+def planning_managemente_index(request):
+    Items = ParentItem.objects.all()
+    paginator = Paginator(Items, 7)  # Número de registros por página
+    page_number = request.GET.get('page') 
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'pages/planning-management/index.html', context)
+
+
+@login_required
+def planning_managemente_details(request, id):
+
+    item = get_object_or_404(ParentItem, id=id)
+
+    routes = Route.objects.filter(parent_item=item)
+    
+    paginator = Paginator(routes, 7)  # Número de registros por página
+    page_number = request.GET.get('page') 
+    page_obj = paginator.get_page(page_number)
+    
+    context = {
+        'page_obj': page_obj,
+    }
+    return render(request, 'pages/planning-management/details.html', context)
+
 #FLOTAS
 @login_required
 def fleets_index(request):
     fleets = Fleet.objects.all()
+    paginator = Paginator(fleets, 7)  # Número de registros por página
+    page_number = request.GET.get('page') 
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'fleets': fleets,
+        'page_obj': page_obj,
     }
     return render(request, 'pages/fleet/index.html', context)
 
@@ -232,11 +298,15 @@ def fleets_detail(request, id):
 
 #COMPANIES
 
-@login_required
 def companies_index(request):
     companies = Company.objects.all()
+
+    paginator = Paginator(companies, 7)  # Número de registros por página
+    page_number = request.GET.get('page') 
+    page_obj = paginator.get_page(page_number)
+    
     context = {
-        'companies': companies,
+        'page_obj': page_obj,
     }
     return render(request, 'pages/companies/index.html', context)
 

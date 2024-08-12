@@ -3,8 +3,8 @@ from . import views
 
 urlpatterns = [
     path('', views.index, name='index'),
-    #RUTAS
-    path('address/', views.planning, name='address'),
+    #PLANNING
+    path('planning/', views.planning, name='planning'),
     path('save_step_data/<int:step>/', views.save_step_data, name='save_step_data'),
     path('upload_routes/<int:step>/', views.upload_routes, name='upload_routes'),
     path('complete_form/', views.complete_form, name='complete_form'),
@@ -12,6 +12,10 @@ urlpatterns = [
     path('createroutes/', views.create_routes, name='create_routes'),
     path('showroutes/', views.show_routes, name='show_routes'),
     path('get_session_data/', views.get_session_data, name='get_session_data'),
+
+    #PLANNING MANAGEMENT
+    path('planning-management/', views.planning_managemente_index, name='planning_managemente_index'),
+    path('planning-management-detail/<int:id>/', views.planning_managemente_details, name='planning_managemente_details'),
 
     #ROLES Y PERMISOS
     #SEGUIMIENTO
