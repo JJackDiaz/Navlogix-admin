@@ -2,12 +2,12 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid py-3">
-    <div class="row h-100">
-        <div class="col-xl-12 col-sm-12 mb-xl-0 mb-4">
-            <div class="card shadow-sm">
+<div style="width: 100% !important;">
+    <div class="row">
+        <div class="col-xl-12 col-sm-12 mb-xl-0 mt-3">
+            <div>
                 <div class="card-header d-flex justify-content-between align-items-center bg-primary text-white py-2">
-                    <h4 class="card-title mb-0 text-white">Planificaciones</h4>
+                    <h4 class="card-title mb-0 text-white p-2">Destinos / {{ page_obj.object_list.0.route }}</h4>
                     <a href="#" class="btn btn-light btn-sm m-1">
                         <i>
                             <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" fill="currentColor" class="bi bi-plus-circle-fill" viewBox="0 0 16 16">
@@ -16,109 +16,76 @@
                         </i>
                     </a>
                 </div>
-                <div class="card-body" style="height: 480px !important;">
-                    <div class="table-responsive">
-                        <table class="table table-striped table-hover">
-                            <thead class="thead-dark">
+                <div class="card-body">
+                    <div class="table-responsive-sm" style="height: 700px; overflow-y: auto !important;"> 
+                        <table class="table table-striped table-hover table-sm align-middle">
+                            <thead class="thead-dark" style="font-size: 15px;">
                                 <tr>
-                                    <th scope="col">Orden</th>
-                                    <th scope="col">Direccion</th>
-                                    <th scope="col">Ciudad</th>
-                                    <th scope="col">Item</th>
-                                    <th scope="col">Vehicle</th>
+                                    <th scope="col" style="width: 100px !important;">Orden</th>
+                                    <th scope="col" style="white-space: nowrap;">Dirección</th>
+                                    <th scope="col" style="white-space: nowrap;">Ruta</th>
+                                    <th scope="col" style="white-space: nowrap;">Estado</th>
+                                    <th scope="col" style="width: 100px;">Acciones</th>
                                 </tr>
                             </thead>
-                            <tbody>
+                            <tbody style="font-size: 12px;">
                                 {% for route in page_obj.object_list %}
-                                    <tr>
-                                        <td>{{ route.order }}</td>
-                                        <td>{{ route.street }}</td>
-                                        <td>{{ route.city }}</td>
-                                        <td>{{ route.parent_item_id }}</td>
-                                        <td>{{ route.vehicle_id }}</td>
-                                        <td>
-                                            <a href="#" class="btn btn-info btn-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16">
-                                                    <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
-                                                    <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
-                                                </svg>
-                                            </a>
-                                            <a href="#" class="btn btn-warning btn-sm">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16">
-                                                    <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/>
-                                                </svg>
-                                            </a>
-                                            <a href="#" class="btn btn-danger btn-sm" onclick="return confirm('¿Estás seguro de que deseas eliminar esta planificación?');">
-                                                <svg xmlns="http://www.w3.org/2000/svg" width="15" height="15" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
-                                                    <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
-                                                </svg>
-                                            </a>
-                                        </td>
-                                    </tr>
+                                <tr>
+                                    <th>{{ route.order }}</th>
+                                    <td>{{ route.address.street }}</td>
+                                    <td>{{ route.route }}</td>
+                                    <td>{{ route.status }}</td>
+                                    <td class="p-0">
+                                        <a href="#" class="btn btn-outline-secondary btn-xs m-1" style="padding: 2px 6px; font-size: 12px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-eye-fill" viewBox="0 0 16 16">
+                                                <path d="M10.5 8a2.5 2.5 0 1 1-5 0 2.5 2.5 0 0 1 5 0"/>
+                                                <path d="M0 8s3-5.5 8-5.5S16 8 16 8s-3 5.5-8 5.5S0 8 0 8m8 3.5a3.5 3.5 0 1 0 0-7 3.5 3.5 0 0 0 0 7"/>
+                                            </svg>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-secondary btn-xs m-1" style="padding: 2px 6px; font-size: 12px;">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-pencil-fill" viewBox="0 0 16 16">
+                                                <path d="M12.854.146a.5.5 0 0 0-.707 0L10.5 1.793 14.207 5.5l1.647-1.646a.5.5 0 0 0 0-.708zm.646 6.061L9.793 2.5 3.293 9H3.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.5h.5a.5.5 0 0 1 .5.5v.207zm-7.468 7.468A.5.5 0 0 1 6 13.5V13h-.5a.5.5 0 0 1-.5-.5V12h-.5a.5.5 0 0 1-.5-.5V11h-.5a.5.5 0 0 1-.5-.5V10h-.5a.5.5 0 0 1-.175-.032l-.179.178a.5.5 0 0 0-.11.168l-2 5a.5.5 0 0 0 .65.65l5-2a.5.5 0 0 0 .168-.11z"/>
+                                            </svg>
+                                        </a>
+                                        <a href="#" class="btn btn-outline-secondary btn-xs m-1" style="padding: 2px 6px; font-size: 12px;" onclick="return confirm('¿Estás seguro de que deseas eliminar esta planificación?');">
+                                            <svg xmlns="http://www.w3.org/2000/svg" width="12" height="12" fill="currentColor" class="bi bi-trash3-fill" viewBox="0 0 16 16">
+                                                <path d="M11 1.5v1h3.5a.5.5 0 0 1 0 1h-.538l-.853 10.66A2 2 0 0 1 11.115 16h-6.23a2 2 0 0 1-1.994-1.84L2.038 3.5H1.5a.5.5 0 0 1 0-1H5v-1A1.5 1.5 0 0 1 6.5 0h3A1.5 1.5 0 0 1 11 1.5m-5 0v1h4v-1a.5.5 0 0 0-.5-.5h-3a.5.5 0 0 0-.5.5M4.5 5.029l.5 8.5a.5.5 0 1 0 .998-.06l-.5-8.5a.5.5 0 1 0-.998.06m6.53-.528a.5.5 0 0 0-.528.47l-.5 8.5a.5.5 0 0 0 .998.058l.5-8.5a.5.5 0 0 0-.47-.528M8 4.5a.5.5 0 0 0-.5.5v8.5a.5.5 0 0 0 1 0V5a.5.5 0 0 0-.5-.5"/>
+                                            </svg>
+                                        </a>
+                                    </td>
+                                </tr>
                                 {% endfor %}
                             </tbody>
                         </table>
+                        <h6 style="font-size: 10px;">Mostrando {{ page_obj.end_index }} de {{ page_obj.paginator.count }} Destinos</h6>
+                        <div class="d-flex justify-content-center align-items-center">
+                            <nav aria-label="Page navigation">
+                                <ul class="pagination pagination-sm">
+                                    {% if page_obj.has_previous %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.previous_page_number }}">&laquo;</a></li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">&laquo;&laquo;</span></li>
+                                        <li class="page-item disabled"><span class="page-link">&laquo;</span></li>
+                                    {% endif %}
+                                    {% for num in page_obj.paginator.page_range %}
+                                        {% if num == page_obj.number %}
+                                            <li class="page-item active"><span class="page-link">{{ num }}</span></li>
+                                        {% else %}
+                                            <li class="page-item"><a class="page-link" href="?page={{ num }}">{{ num }}</a></li>
+                                        {% endif %}
+                                    {% endfor %}
+                                    {% if page_obj.has_next %}
+                                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.next_page_number }}">&raquo;</a></li>
+                                        <li class="page-item"><a class="page-link" href="?page={{ page_obj.paginator.num_pages }}">&raquo;&raquo;</a></li>
+                                    {% else %}
+                                        <li class="page-item disabled"><span class="page-link">&raquo;</span></li>
+                                    {% endif %}
+                                </ul>
+                            </nav>
+                        </div>
                     </div>
                 </div>
-                <!-- Paginación -->
-                <div class="d-flex justify-content-center align-items-center mt-3">
-                    <nav aria-label="Page navigation">
-                        <ul class="pagination">
-                            {% if page_obj.has_previous %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page=1" aria-label="Primera">
-                                        <span aria-hidden="true">&laquo;&laquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.previous_page_number }}" aria-label="Anterior">
-                                        <span aria-hidden="true">&laquo;</span>
-                                    </a>
-                                </li>
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <span class="page-link">&laquo;&laquo;</span>
-                                </li>
-                                <li class="page-item disabled">
-                                    <span class="page-link">&laquo;</span>
-                                </li>
-                            {% endif %}
-
-                            <!-- Números de Página -->
-                            {% for num in page_obj.paginator.page_range %}
-                                {% if num == page_obj.number %}
-                                    <li class="page-item active" aria-current="page">
-                                        <span class="page-link">{{ num }}</span>
-                                    </li>
-                                {% else %}
-                                    <li class="page-item">
-                                        <a class="page-link" href="?page={{ num }}">{{ num }}</a>
-                                    </li>
-                                {% endif %}
-                            {% endfor %}
-
-                            {% if page_obj.has_next %}
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.next_page_number }}" aria-label="Siguiente">
-                                        <span aria-hidden="true">&raquo;</span>
-                                    </a>
-                                </li>
-                                <li class="page-item">
-                                    <a class="page-link" href="?page={{ page_obj.paginator.num_pages }}" aria-label="Última">
-                                        <span aria-hidden="true">&raquo;&raquo;</span>
-                                    </a>
-                                </li>
-                            {% else %}
-                                <li class="page-item disabled">
-                                    <span class="page-link">&raquo;</span>
-                                </li>
-                                <li class="page-item disabled">
-                                    <span class="page-link">&raquo;&raquo;</span>
-                                </li>
-                            {% endif %}
-                        </ul>
-                    </nav>
-                </div>
+                
             </div>
         </div>
     </div>

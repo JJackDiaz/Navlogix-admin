@@ -2,65 +2,70 @@
 {% load static %}
 
 {% block content %}
-<div class="container-fluid" style="background-color: #edf4ee; height:100vh;width: 110%;">
-    <div class="row h-100">
+<div style="height:100vh;width: 100%;">
+    <div class="row h-100 p-3">
         <!-- Columna para el formulario -->
-        <div class="col-4 d-flex flex-column" style="padding: 0;">
-            <div class="d-flex flex-column h-100">
+        <div class="col-4 align-items-center" style="padding: 0;">
+            <div class="d-flex flex-column h-100 bg-light">
                 <!-- Paso 1 -->
                 <div id="step1" class="step flex-grow-1">
+                    
                     <form id="step1_form" method="post" class="h-100 d-flex flex-column">
                         {% csrf_token %}
-                        <div class="flex-grow-1">
-                            <!-- <input type="text" id="driver-search" class="form-control" placeholder="Buscar chofer..."> -->
-                            <div id="driver-list" style="max-height: 100%; overflow-y: auto;">
-                                <h5 class="mt-3 text-center">Selecciona los vehículos a utilizar</h5>
-                                <hr class="horizontal dark mt-0">
-                                <table class="table table-striped table-hover">
-                                    <thead>
-                                        <tr>
-                                            <th></th>
-                                            <th class="" style="font-size: 0.80rem;">Vehículo</th>
-                                            <th class="" style="font-size: 0.80rem;">Capacidad</th>
-                                            <th class="" style="font-size: 0.80rem;">Conductor</th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
+                        <div class="flex-grow-1 align-items-center">
+                            
+                                <!-- Header con estilo -->
+                                <div class="bg-primary text-white p-3">
+                                    <h5 class="m-0 text-white">Selecciona los vehículos</h5>
+                                </div>
+                                <div style="max-height: 550px; overflow-y: auto !important;">
+                                    <ul class="list-group list-group-flush" id="driver-list">
                                         {% for vehicle in vehicles %}
-                                            <tr>
-                                                <td>
-                                                    <input class="form-check-input" type="checkbox" id="id_vehicles_{{ forloop.counter0 }}" name="drivers" value="{{ vehicle.id }}">
-                                                </td>
-                                                <td>
-                                                    <label class="form-check-label" for="id_vehicles_{{ forloop.counter0 }}">
-                                                        {{ vehicle.name }}
+                                            <li class="list-group-item d-flex justify-content-between border-0 mb-1">
+                                                <div class="form-check">
+                                                    <input class="form-check-input mt-3" type="checkbox" id="id_vehicles_{{ forloop.counter0 }}" name="drivers" value="{{ vehicle.id }}">
+                                                    <label class="form-check-label mt-3" for="id_vehicles_{{ forloop.counter0 }}">
+                                                        <strong>{{ vehicle.name }}</strong>
                                                     </label>
-                                                </td>
-                                                <td>
-                                                    <label class="form-check-label" for="id_vehicles_{{ forloop.counter0 }}">
-                                                        {{ vehicle.capacity }}
-                                                    </label>
-                                                </td>
-                                                <td>
-                                                    <label class="form-check-label" for="id_vehicles_{{ forloop.counter0 }}">
-                                                        {{ vehicle.user }}
-                                                    </label>
-                                                </td>
-                                            </tr>
+                                                </div>
+                                                <div class="ms-2 d-flex flex-column">
+                                                    <div class="ms-2 d-flex flex-column">
+                                                        <div class="d-flex align-items-start mb-1 justify-content-start">
+                                                            <i class="me-2">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-segmented-nav" viewBox="0 0 16 16">
+                                                                    <path d="M0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm6 3h4V5H6zm9-1V6a1 1 0 0 0-1-1h-3v4h3a1 1 0 0 0 1-1"/>
+                                                                </svg>
+                                                            </i>
+                                                            <p class="card-text mb-0">
+                                                                {{ vehicle.capacity }}
+                                                            </p>
+                                                        </div>
+                                                        <div class="d-flex align-items-start mb-1 justify-content-start">
+                                                            <i class="me-2">
+                                                                <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-segmented-nav" viewBox="0 0 16 16">
+                                                                    <path d="M0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm6 3h4V5H6zm9-1V6a1 1 0 0 0-1-1h-3v4h3a1 1 0 0 0 1-1"/>
+                                                                </svg>
+                                                            </i>
+                                                            <p class="card-text mb-0">
+                                                                {{ vehicle.user }}
+                                                            </p>
+                                                        </div>
+                                                    </div>
+                                                </div>
+                                            </li>
                                         {% endfor %}
-                                    </tbody>
-                                </table>
+                                    </ul>
+                                </div>
+                                <div class="d-flex justify-content-end mb-6 m-2">
+                                    <span id="message" class="sm-1 text-danger mt-2 m-1" style="display: none; font-size: 0.70rem;">Selecciona al menos un vehículo(*)</span>
+                                    <button type="button" id="next-step-btn" class="btn btn-primary m-1" onclick="submitStep(1)">Guardar y Continuar</button>
+                                </div>
                             </div>
-                        </div>
                         
-                        <div class="d-flex justify-content-end mb-6 m-2">
-                            <span id="message" class="sm-1 text-danger mt-2 m-1" style="display: none; font-size: 0.70rem;">Selecciona al menos un vehículo(*)</span>
-                            <button type="button" id="next-step-btn" class="btn btn-primary" onclick="submitStep(1)">Guardar y Continuar</button>
-                        </div>
                     </form>
+                
                 </div>
 
-                <!-- Paso 2 -->
                 <!-- Paso 2 -->
                 <div id="step2" class="step flex-grow-1" style="display: none;">
                     <div id="loading" style="
@@ -82,63 +87,157 @@
                         </div>
                     </div>
 
-                    <div class="m-3 flex-grow-1">
-                        <div class="row justify-content-start">
-                            <div class="col-md-6 mt-3">
-                                <h6>Cargar puntos</h6>
-                            </div>
-                            <div class="col-md-6 mt-3 d-flex justify-content-end">
-                                <button type="button" class="btn btn-sm btn-danger dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
-                                    Cargar
-                                </button>
-                                <div class="dropdown-menu">
-                                    <a class="dropdown-item" href="#">Manual</a>
-                                    <a class="dropdown-item" href="#" id="upload-excel-link">Excel</a>
-                                    <input type="file" id="upload-excel" accept=".xls,.xlsx" style="display: none;">
-                                    <a class="dropdown-item" href="#">Integración</a>
+                    <div class="flex-grow-1">
+                        <div style="height: 700px !important;">
+                            <div class="bg-primary text-white p-3">
+                                <div>
+                                    <h5 class="m-0 text-white">Cargar puntos</h5>
+                                </div>
+                            </div>                
+                            <div class="d-flex m-1">
+                                <div class="flex-grow-1 me-2">
+                                    <input type="text" id="driver-search" class="p-2" placeholder="Buscar dirección...">
+                                </div>
+                                <div>
+                                    <button type="button" style="padding: 11px;" class="btn btn-primary dropdown-toggle" data-toggle="dropdown" aria-haspopup="true" aria-expanded="false">
+                                        Cargar
+                                    </button>
+                                    <div class="dropdown-menu">
+                                        <a class="dropdown-item" href="#" id="manual-load-link">Manual</a>
+                                        <a class="dropdown-item" href="#" id="upload-excel-link">Excel</a>
+                                        <input type="file" id="upload-excel" accept=".xls,.xlsx" style="display: none;">
+                                        <a class="dropdown-item" href="#">Integración</a>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-                        <input type="text" id="driver-search" class="form-control" placeholder="Buscar dirección...">
-                        {% if uploaded_addresses %}
                             
-                            <div class="col-12">
-                                <!-- Botones de acciones masivas -->
-                                <div class="d-flex mt-2">
-                                    <div class="m-2">
-                                        <input type="checkbox" id="select-all" /> Seleccionar Todos
+                        
+                            <!-- Formulario oculto inicialmente -->
+                            <div id="manual-load-form" style="display: none;">
+                                <h5>Formulario de Carga Manual</h5>
+                                <form>
+                                    <!-- Título -->
+                                    <div class="form-group mb-3">
+                                        <label for="title">Título</label>
+                                        <input type="text" id="title" class="form-control" placeholder="Ingrese el título" maxlength="100">
                                     </div>
-                                    <div class="m-2">
-                                        <button type="button" class="btn btn-danger btn-sm" onclick="deleteSelected()">Eliminar</button>
-                                        <button type="button" class="btn btn-warning btn-sm" onclick="editSelected()">Editar</button>
-                                    </div>
-                                </div>
-                            </div>
-                            <div id="address-list" style="max-height: 400px; overflow-y: auto;">
-                                {% for address in uploaded_addresses %}
-                                <input type="checkbox" class="row-select" value="{{ address.id }}" />
-                                <ul class="list-group">
-                                    <li class="list-group-item d-flex address-item {% if forloop.counter > 6 %}d-none{% endif %}">
-                                        <div class="d-flex align-items-center">
-                                            <div>
-                                                <input type="checkbox" class="row-select mr-2" value="{{ address.id }}" />
-                                                <span class="font-weight-bold">{{ address.street }}</span>
-                                                <p class="mb-1">{{ address.city }}</p>
-                                            </div>
+                                
+                                    <!-- Dirección y Ciudad -->
+                                    <div class="row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="street">Dirección</label>
+                                            <input type="text" id="street" class="form-control" placeholder="Ingrese la dirección" maxlength="100">
                                         </div>
-                                    </li>
-                                    {% endfor %}
-                                </ul>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="city">Ciudad</label>
+                                            <input type="text" id="city" class="form-control" placeholder="Ingrese la ciudad" maxlength="100">
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Estado y Nota -->
+                                    <div class="row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="state">Estado</label>
+                                            <input type="text" id="state" class="form-control" placeholder="Ingrese el estado" maxlength="100">
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="note">Nota</label>
+                                            <input type="text" id="note" class="form-control" placeholder="Ingrese una nota" maxlength="100">
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Recibe y Teléfono -->
+                                    <div class="row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="receives">Recibe</label>
+                                            <input type="text" id="receives" class="form-control" placeholder="Nombre de la persona que recibe" maxlength="100">
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="phone">Teléfono</label>
+                                            <input type="text" id="phone" class="form-control" placeholder="Ingrese el teléfono" maxlength="100">
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Latitud y Longitud -->
+                                    <div class="row">
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="latitude">Latitud</label>
+                                            <input type="text" id="latitude" class="form-control" placeholder="Ingrese la latitud" maxlength="20" value="0.0">
+                                        </div>
+                                        <div class="form-group col-md-6 mb-3">
+                                            <label for="longitude">Longitud</label>
+                                            <input type="text" id="longitude" class="form-control" placeholder="Ingrese la longitud" maxlength="20" value="0.0">
+                                        </div>
+                                    </div>
+                                
+                                    <!-- Botones de acción -->
+                                    <div class="form-group mt-3">
+                                        <button type="submit" class="btn btn-primary">Guardar</button>
+                                        <button type="button" id="close-form" class="btn btn-danger">Cancelar</button>
+                                    </div>
+                                </form>
+                                
                             </div>
-                            
-                        {% endif %}
-
+                        
+                            {% if uploaded_addresses %}
+                                <div class="col-12">
+                                    <!-- Botones de acciones masivas -->
+                                    <div class="d-flex mt-2">
+                                        <div class="m-2">
+                                            <input type="checkbox" id="select-all" /> Seleccionar Todos
+                                        </div>
+                                        <div class="m-2">
+                                            <button type="button" class="btn btn-danger btn-sm" onclick="deleteSelected()">Eliminar</button>
+                                            <button type="button" class="btn btn-warning btn-sm" onclick="editSelected()">Editar</button>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div id="address-list" style="max-height: 500px; overflow-y: auto !important;">
+                                    <ul class="list-group">
+                                        {% for address in uploaded_addresses %}
+                                        <li class="list-group-item d-flex justify-content-between mb-1" style="border-radius: 0;">
+                                            <div class="form-check">
+                                                <input class="form-check-input mt-3 row-select" type="checkbox" id="id_address_{{ forloop.counter0 }}" name="address" value="{{ address.code }}">
+                                                <label class="form-check-label mt-3" for="id_address_{{ forloop.counter0 }}">
+                                                    <strong>{{ address.street }}</strong>
+                                                </label>
+                                            </div>
+                                            <div class="ms-2 d-flex flex-column">
+                                                <div class="ms-2 d-flex flex-column">
+                                                    <div class="d-flex align-items-start mb-1 justify-content-start">
+                                                        <i class="me-2">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-segmented-nav" viewBox="0 0 16 16">
+                                                                <path d="M0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm6 3h4V5H6zm9-1V6a1 1 0 0 0-1-1h-3v4h3a1 1 0 0 0 1-1"/>
+                                                            </svg>
+                                                        </i>
+                                                        <p class="card-text mb-0">
+                                                            {{ address.number }}
+                                                        </p>
+                                                    </div>
+                                                    <div class="d-flex align-items-start mb-1 justify-content-start">
+                                                        <i class="me-2">
+                                                            <svg xmlns="http://www.w3.org/2000/svg" width="20" height="20" fill="currentColor" class="bi bi-segmented-nav" viewBox="0 0 16 16">
+                                                                <path d="M0 6a2 2 0 0 1 2-2h12a2 2 0 0 1 2 2v2a2 2 0 0 1-2 2H2a2 2 0 0 1-2-2zm6 3h4V5H6zm9-1V6a1 1 0 0 0-1-1h-3v4h3a1 1 0 0 0 1-1"/>
+                                                            </svg>
+                                                        </i>
+                                                        <p class="card-text mb-0">
+                                                            {{ address.city }}
+                                                        </p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </li>
+                                        {% endfor %}
+                                    </ul>
+                                </div>
+                            {% endif %}
+                        </div>
                     </div>
-
+                    
                     <!-- Botones al final del paso -->
-                    <div class="d-flex justify-content-end m-2 mt-3">
-                        <button type="button" id="previous-step-btn" class="btn btn-primary" onclick="previousStep(2)">Volver</button>
-                        <button type="button" id="next-step-btn" class="btn btn-primary ml-2" onclick="submitStep(2)">Guardar y Continuar</button>
+                    <div class="d-flex justify-content-end mb-6 m-2">
+                        <button type="button" id="previous-step-btn" class="btn btn-primary m-1" onclick="previousStep(2)">Volver</button>
+                        <button type="button" id="next-step-btn" class="btn btn-primary m-1" onclick="submitStep(2)">Guardar y Continuar</button>
                     </div>
                 </div>
 
@@ -146,7 +245,7 @@
 
                 <!-- Paso 3 -->
                 <div id="step3" class="step" style="display: none; flex-grow: 1;">
-                    <div id="driver-list" class="scrollable-list" style="max-height: 100%; overflow-y: auto;">
+                    <div id="driver-list" class="scrollable-list" style="max-height: 100%; overflow-y: auto !important;">
                         <div id="accordionFlushExample">
                             <!-- Contenido del acordeón -->
                         </div>
@@ -174,7 +273,8 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-    mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
+    //mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
+    mapboxgl.accessToken = '';
     
     // Mapa para cada paso
     var map1, map2, map3;
@@ -226,6 +326,7 @@
                         //getRoutesOptimized();
                     }
                     if (step < 3) {
+                        console.log("STEP: "+step)
                         $('.step').hide();
                         $('#step' + (step + 1)).show();
                     } else {
@@ -277,6 +378,7 @@ function hideLoading() {
 }
 
 
+//CARGAR EXCEL
 function uploadFile() {
     var fileInput = $('#upload-excel')[0];
     var formData = new FormData();
@@ -317,13 +419,24 @@ function uploadFile() {
     });
 }
 
+//CARGA MANUAL
+document.getElementById('manual-load-link').addEventListener('click', function(event) {
+    event.preventDefault(); // Evita la redirección
+    document.getElementById('manual-load-form').style.display = 'block';
+});
+
+document.getElementById('close-form').addEventListener('click', function(event) {
+    event.preventDefault(); // Evita la redirección
+    document.getElementById('manual-load-form').style.display = 'none';
+});
+
 $(document).ready(function() {
     // Restaurar el paso actual después de la recarga
     var savedStep = sessionStorage.getItem('currentStep');
     if (savedStep) {
         $('.step').hide();
         $('#step' + savedStep).show();
-        sessionStorage.removeItem('currentStep'); // Opcional: limpiar el valor después de usarlo
+        sessionStorage.removeItem('currentStep');
     }
 });
 
@@ -509,11 +622,54 @@ $(document).ready(function() {
         if (selectedIds.length > 0) {
             if (confirm('¿Estás seguro de que quieres eliminar las direcciones seleccionadas?')) {
                 // Implementar lógica para eliminar las direcciones seleccionadas
-                alert('Eliminar direcciones con IDs: ' + selectedIds.join(', '));
+                fetch('/delete_addresses/', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRFToken': getCookie('csrftoken')
+                    },
+                    body: JSON.stringify({ 'selected_ids': selectedIds })
+                })
+                .then(response => response.json())
+                .then(data => {
+                    if (data.status === 'success') {
+                        alert('Direcciones eliminadas con éxito.');
+                        localStorage.setItem('currentStep', 1);
+                        window.location.reload();
+                        } else {
+                            alert('Hubo un problema al eliminar las direcciones.');
+                        }
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                });
             }
         } else {
             alert('No se ha seleccionado ninguna dirección.');
         }
+    }
+
+    document.addEventListener('DOMContentLoaded', function() {
+        var currentStep = localStorage.getItem('currentStep');
+        if (currentStep) {
+            submitStep(1); 
+            localStorage.removeItem('currentStep');
+        }
+    });
+
+    function getCookie(name) {
+        let cookieValue = null;
+        if (document.cookie && document.cookie !== '') {
+            const cookies = document.cookie.split(';');
+            for (let i = 0; i < cookies.length; i++) {
+                const cookie = cookies[i].trim();
+                if (cookie.substring(0, name.length + 1) === (name + '=')) {
+                    cookieValue = decodeURIComponent(cookie.substring(name.length + 1));
+                    break;
+                }
+            }
+        }
+        return cookieValue;
     }
 
     // Función para editar las direcciones seleccionadas

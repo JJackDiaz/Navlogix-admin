@@ -1,0 +1,189 @@
+{% extends 'layouts/base.html' %}
+{% load static %}
+
+{% block content %}
+<div style="height:100vh;width: 100%;">
+    <div class="row h-100 p-3">
+        <!-- Columna para el formulario -->
+        <div class="col-4" style="padding: 0;">
+            <div class="d-flex flex-column h-100 bg-light">
+                <div>
+                    <div class="bg-primary text-white p-3">
+                        <h5 class="m-0 text-white">Monitoreo</h5>
+                    </div>
+                    <div style="max-height: 550px; overflow-y: auto !important;">
+                        <ul class="list-group list-group-flush">
+                            {% for vehicle_id, vehicle_data in vehicles_plan.items %}
+                                <li class="list-group-item d-flex justify-content-between border-0 mb-1">
+                                    <div class="d-flex flex-column">
+                                        <span class="fw-bold text-dark">{{ vehicle_data.vehicle_name }}</span>
+                                        <small class="text-muted">
+                                            {% if vehicle_data.route_addresses %}
+                                                Rutas disponibles: {{ vehicle_data.route_addresses|length }}
+                                            {% else %}
+                                                Sin rutas disponibles
+                                            {% endif %}
+                                        </small>
+                                    </div>
+                                    <button class="btn btn-primary btn-sm vehicle-button" 
+                                            type="button"
+                                            data-vehicle-id="{{ vehicle_id }}"
+                                            data-routes='[
+                                                {% for route in vehicle_data.route_addresses %}
+                                                    {
+                                                        "lat": "{{ route.latitude }}",
+                                                        "lon": "{{ route.longitude }}",
+                                                        "street": "{{ route.address|escapejs }}",
+                                                        "order": {{ route.order }},
+                                                        "city": "{{ route.city|escapejs }}"
+                                                    }{% if not forloop.last %},{% endif %}
+                                                {% endfor %}
+                                            ]'>
+                                        Ver Rutas
+                                    </button>
+                                </li>
+                            {% endfor %}
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </div>
+        
+        <!-- Columna para el mapa -->
+        <div class="col-md-8 d-flex flex-column" style="padding: 0;">
+            <div id="map-step1" class="map-container" style="flex-grow: 1; height: 100%;">
+                <div id="route-info" style="position: absolute; top: 10px; left: 10px; background-color: rgba(255, 255, 255, 0.8); padding: 10px; border-radius: 5px; z-index: 1;">
+                    <div>Duración: <span id="duration-value">0</span> horas</div>
+                    <div>Distancia: <span id="distance-value">0</span> km</div>
+                </div>
+            </div>
+        </div>
+    </div> 
+</div>
+{% endblock content %}
+
+{% block scripts %}
+<link href='https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.css' rel='stylesheet' />
+<script src='https://api.mapbox.com/mapbox-gl-js/v2.6.1/mapbox-gl.js'></script>
+<script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
+<script src="https://cdn.jsdelivr.net/npm/@turf/turf@6/turf.min.js"></script>
+
+<script>
+    mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
+
+    var map1;
+
+    function initializeMaps() {
+        map1 = new mapboxgl.Map({
+            container: 'map-step1',
+            style: 'mapbox://styles/mapbox/streets-v11',
+            center: [-70.64827, -33.45694],
+            zoom: 10
+        });
+    }
+
+    let existingMarkers = [];
+
+    function showRouteOnMap(routes) {
+        // Elimina todos los marcadores existentes
+        if (existingMarkers.length > 0) {
+            existingMarkers.forEach(marker => marker.remove());
+            existingMarkers = [];
+        }
+
+        // Añade nuevos marcadores
+        routes.forEach(function(route) {
+            const el = document.createElement('div');
+            el.className = 'marker';
+            el.innerHTML = `<span class="marker-order">${route.order}</span>`;
+            el.style.backgroundColor = '#FF5733';
+            el.style.width = '18px';
+            el.style.height = '18px';
+            el.style.borderRadius = '50%';
+            el.style.display = 'flex'; 
+            el.style.alignItems = 'center'; 
+            el.style.justifyContent = 'center'; 
+            el.style.color = 'white';
+            el.style.fontSize = '14px';
+
+            const marker = new mapboxgl.Marker(el)
+                .setLngLat([route.lon, route.lat])
+                .setPopup(
+                    new mapboxgl.Popup({ offset: 25 })
+                        .setHTML(`
+                            <h5>${route.street}</h5>
+                            <p>${route.city}</p>
+                        `)
+                )
+                .addTo(map1);
+
+            existingMarkers.push(marker);
+        });
+
+        if (routes.length > 0) {
+            map1.setCenter([routes[0].lon, routes[0].lat]);
+            map1.setZoom(11);
+        }
+    }
+
+    $(document).ready(function() {
+        initializeMaps();
+
+        $('.vehicle-button').click(function() {
+            var routesJson = $(this).data('routes');
+            showRouteOnMap(routesJson);
+        });
+    });
+
+    function calculateRouteDuration(routes) {
+        // if (routes.length < 2) {
+        //     return { duration: 0, distance: 0 };
+        // }
+
+        let totalDistance = 0;
+        const averageSpeed = 40; // Velocidad promedio en km/h
+        const distanceFactor = 60 / averageSpeed; // Factor para convertir la distancia en tiempo en minutos
+        const estimatedTimePerDelivery = 3; // Tiempo estimado por entrega en minutos
+        const totalEstimatedDeliveryTime = estimatedTimePerDelivery * routes.length; // Tiempo total de entregas
+
+        for (let i = 0; i < routes.length - 1; i++) {
+            const lat1 = routes[i].lat;
+            const lon1 = routes[i].lon;
+            const lat2 = routes[i+1].lat;
+            const lon2 = routes[i+1].lon;
+
+            const R = 6371; // Radio de la Tierra en km
+            const dLat = (lat2 - lat1) * Math.PI / 180;
+            const dLon = (lon2 - lon1) * Math.PI / 180;
+            const a = Math.sin(dLat/2) * Math.sin(dLat/2) +
+                    Math.cos(lat1 * Math.PI / 180) * Math.cos(lat2 * Math.PI / 180) *
+                    Math.sin(dLon/2) * Math.sin(dLon/2);
+            const c = 2 * Math.atan2(Math.sqrt(a), Math.sqrt(1-a));
+            const distance = R * c; // Distancia en km
+
+            totalDistance += distance;
+        }
+
+        const totalTime = (totalDistance * distanceFactor) + totalEstimatedDeliveryTime; // Duración total en minutos, incluyendo tiempo de entregas
+
+        const hours = Math.floor(totalTime / 60);
+        const minutes = Math.round(totalTime % 60);
+        const distanceInKm = totalDistance.toFixed(2); // Formatear a 2 decimales
+
+        return { duration: `${hours}h ${minutes}m`, distance: distanceInKm };
+    }
+
+
+    $(document).ready(function() {
+        initializeMaps();
+
+        $('.vehicle-button').click(function() {
+            var routesJson = $(this).data('routes');
+            const routeInfo = calculateRouteDuration(routesJson);
+            showRouteOnMap(routesJson);
+            document.getElementById('duration-value').innerText = routeInfo.duration;
+            document.getElementById('distance-value').innerText = routeInfo.distance;
+        });
+    });
+</script>
+{% endblock scripts %}

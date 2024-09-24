@@ -5,12 +5,13 @@ from rest_framework.authtoken.models import Token
 from rest_framework.authtoken.views import ObtainAuthToken
 from django.contrib.auth import authenticate
 from django.contrib.auth.models import User
-from .serializers import LoginSerializer, RouteSerializer
+from .serializers import LoginSerializer, RouteSerializer, RouteAddressSerializer
 from rest_framework.generics import GenericAPIView
 from rest_framework.permissions import IsAuthenticated
 from home.models import Vehicle
 
 from home.models import Route
+from home.models import RouteAddress
 
 class LoginView(ObtainAuthToken):
     def post(self, request, *args, **kwargs):
@@ -66,12 +67,21 @@ class Logout(GenericAPIView):
 
 
 class UserRoutesView(generics.ListAPIView):
-    serializer_class = RouteSerializer
+    serializer_class = RouteAddressSerializer
     permission_classes = (IsAuthenticated,)
 
     def get_queryset(self):
-        user_id = self.kwargs['user_id']
+        user_id = self.kwargs.get('user_id')
+        try:
+            vehicle = Vehicle.objects.get(user_id=user_id)
+        except Vehicle.DoesNotExist:
+            raise Http404("Vehicle not found")
 
-        vehicle = Vehicle.objects.filter(user_id=user_id).first()
-        if vehicle:
-            return Route.objects.filter(vehicle_id=vehicle.id)
+        # Get the active route for the vehicle
+        user_route = Route.objects.filter(vehicle_id=vehicle.id, is_active=True).first()
+        if user_route is None:
+            # If there's no active route, return an empty queryset or raise an exception
+            return RouteAddress.objects.none()
+
+        # Return addresses associated with the route
+        return RouteAddress.objects.filter(route_id=user_route.id)

@@ -16,12 +16,14 @@ from django.contrib.auth.models import User
 from sklearn.cluster import DBSCAN
 from sklearn.metrics.pairwise import haversine_distances
 
+
 def calculate_distance(address1, address2):
     R = 6371.0
     lat1 = math.radians(address1['lat'])
     lon1 = math.radians(address1['long'])
     lat2 = math.radians(address2['lat'])
     lon2 = math.radians(address2['long'])
+
 
     dlon = lon2 - lon1
     dlat = lat2 - lat1
@@ -31,6 +33,7 @@ def calculate_distance(address1, address2):
 
     distance = R * c
     return distance
+
 
 def optimize_route_for_vehicle(route_addresses):
     if not route_addresses or len(route_addresses) < 2:
@@ -75,27 +78,32 @@ def optimize_route_for_vehicle2(route_addresses):
 
     # Inicializar la ruta con la primera dirección
     route = [route_addresses[0]]
-    remaining_addresses = set(route_addresses[1:])
+    remaining_indices = set(range(1, len(route_addresses)))
 
-    while remaining_addresses:
-        # Encontrar el vecino más cercano a la última dirección en la ruta
+    current_index = 0
+    while remaining_indices:
+        # Encontrar los vecinos más cercanos a la última dirección en la ruta
         distances, indices = neighbors.kneighbors(np.array([route[-1]['lat'], route[-1]['long']]).reshape(1, -1))
         for idx in indices[0][1:]:
-            nearest_address = route_addresses[idx]
-            if nearest_address in remaining_addresses:
-                route.append(nearest_address)
-                remaining_addresses.remove(nearest_address)
+            if idx in remaining_indices:
+                route.append(route_addresses[idx])
+                remaining_indices.remove(idx)
+                current_index = idx
                 break
 
-    # Aplicar la optimización 2-opt
-    optimized_route = two_opt(route)
-    
-    return optimized_route
+    return route
+
+# def calculate_total_distance(route):
+#     total_distance = 0.0
+#     for i in range(len(route) - 1):
+#         total_distance += calculate_distance(route[i], route[i + 1])
+#     return total_distance
 
 def calculate_total_distance(route):
     total_distance = 0.0
     for i in range(len(route) - 1):
-        total_distance += calculate_distance(route[i], route[i + 1])
+        total_distance += np.sqrt((route[i+1].latitude - route[i].latitude)**2 + 
+                                  (route[i+1].longitude - route[i].longitude)**2)
     return total_distance
 
 def two_opt(route):
@@ -118,25 +126,35 @@ def two_opt(route):
     
     return best_route
 
+# def cluster_addresses(addresses, n_clusters):
+#     coordinates = np.array([[address['lat'], address['long']] for address in addresses])
+#     radians = np.radians(coordinates)
+#     distances = haversine_distances(radians)
+
+#     # DBSCAN puede no dar exactamente `n_clusters` clusters, ajustar `eps` y `min_samples` según sea necesario
+#     db = DBSCAN(eps=0.01, min_samples=1, metric='precomputed')
+#     labels = db.fit_predict(distances)
+    
+#     # Map labels to clusters
+#     unique_labels = np.unique(labels)
+#     if len(unique_labels) < n_clusters:
+#         n_clusters = len(unique_labels)
+    
+#     # Crear lista de listas para clusters
+#     clustered_addresses = [[] for _ in range(n_clusters)]
+#     for i, label in enumerate(labels):
+#         cluster_index = min(label, n_clusters - 1)  # Asegurarse de no exceder el número de clusters
+#         clustered_addresses[cluster_index].append(addresses[i])
+
+#     return clustered_addresses
+
 def cluster_addresses(addresses, n_clusters):
     coordinates = np.array([[address['lat'], address['long']] for address in addresses])
-    radians = np.radians(coordinates)
-    distances = haversine_distances(radians)
-
-    # DBSCAN puede no dar exactamente `n_clusters` clusters, ajustar `eps` y `min_samples` según sea necesario
-    db = DBSCAN(eps=0.01, min_samples=1, metric='precomputed')
-    labels = db.fit_predict(distances)
-    
-    # Map labels to clusters
-    unique_labels = np.unique(labels)
-    if len(unique_labels) < n_clusters:
-        n_clusters = len(unique_labels)
-    
-    # Crear lista de listas para clusters
+    kmeans = KMeans(n_clusters=n_clusters, random_state=0).fit(coordinates)
     clustered_addresses = [[] for _ in range(n_clusters)]
-    for i, label in enumerate(labels):
-        cluster_index = min(label, n_clusters - 1)  # Asegurarse de no exceder el número de clusters
-        clustered_addresses[cluster_index].append(addresses[i])
+
+    for i, label in enumerate(kmeans.labels_):
+        clustered_addresses[label].append(addresses[i])
 
     return clustered_addresses
 
@@ -159,7 +177,7 @@ def optimize_and_save_routes(addresses, vehicles):
     optimized_routes = {}
 
     for vehicle_id, route_addresses in vehicle_routes.items():
-        optimal_route = optimize_route_for_vehicle(route_addresses)
+        optimal_route = optimize_route_for_vehicle2(route_addresses)
         vehicle_route_with_order = []
 
         for i, address in enumerate(optimal_route):

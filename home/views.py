@@ -1,6 +1,6 @@
 from django.shortcuts import render, redirect
 from .forms import UploadFileForm, CompanyForm, UserProfileCreationForm
-from .models import Address, Route, Vehicle, ParentItem, Company , UserProfile, Fleet
+from .models import Address, Route, Vehicle, Company , UserProfile, Fleet, RouteVehicle, RouteAddress
 from django.contrib.auth.models import User
 from .utils import optimize_and_save_routes
 import pandas as pd
@@ -16,12 +16,14 @@ from django.contrib.sessions.backends.db import SessionStore
 from django.core.paginator import Paginator
 
 from django.template.loader import render_to_string
+from django.utils import timezone
+from django.db.models import Prefetch
 
 
 #ROLES
 from .decorators import group_required
 
-#groups = ['admin', 'driver', 'user']
+#groups = ['admin', 'driver', 'user', 'demo']
 
 #python manage.py migrate sessions
 
@@ -33,22 +35,23 @@ def index(request):
 @login_required
 def planning(request):
     today = datetime.date.today()
-    routes = Route.objects.filter(parent_item__date=today)
+    routes = RouteAddress.objects.all()
 
     # Obtener datos de la sesión
     step2_data = request.session.get('uploaded_addresses')
+
+    print("Session: ", step2_data)
     
     Vehicles = Vehicle.objects.all()
     
     # Si existen direcciones cargadas en la sesión, incluirlas en el contexto
     routes_data = [
         {
-            'address': route.street + ' ' + route.number + ', ' + route.city,
-            'longitude': route.longitude,
-            'latitude': route.latitude,
-            'order': route.order,
-            'description': route.parent_item.description,
-            'driver': route.vehicle.id
+            'address': route.address.street + ' ' + route.address.city,
+            'longitude': route.address.longitude,
+            'latitude': route.address.latitude,
+            #'order': route_address.order,
+            #'driver': route.routevehicle.vehicle.id
         }
         for route in routes
     ]
@@ -62,6 +65,45 @@ def planning(request):
         context['uploaded_addresses'] = step2_data
     
     return render(request, 'pages/planning/index.html', context)
+
+#MODIFICAR SESION
+@login_required
+def editar_campo_sesion(request):
+    # Verificar si el campo existe en la sesión
+    if 'campo_a_editar' in request.session:
+        # Modificar el valor del campo
+        request.session['campo_a_editar'] = 'nuevo_valor'
+        # Guardar la sesión
+        request.session.modified = True
+    
+    # Retornar una respuesta o redireccionar
+    return HttpResponse("Campo editado con éxito.")
+
+# En tu vista Django
+@login_required
+def delete_addresses_view(request):
+    if request.method == 'POST':
+        try:
+            data = json.loads(request.body)
+            selected_ids = data.get('selected_ids', [])
+
+            if not selected_ids:
+                return JsonResponse({'status': 'error', 'message': 'No se proporcionaron IDs.'})
+
+            # Recuperar las direcciones almacenadas en la sesión
+            addresses = request.session.get('uploaded_addresses', [])
+            
+            # Filtrar las direcciones para eliminar las seleccionadas
+            updated_addresses = [addr for addr in addresses if addr['code'] not in selected_ids]
+
+            # Actualizar la sesión
+            request.session['uploaded_addresses'] = updated_addresses
+
+            return JsonResponse({'status': 'success'})
+        except Exception as e:
+            return JsonResponse({'status': 'error', 'message': str(e)})
+
+    return JsonResponse({'status': 'error', 'message': 'Método no permitido.'})
 
 @login_required
 def save_step_data(request, step):
@@ -99,29 +141,6 @@ def save_step_data(request, step):
                 return JsonResponse({'status': 'error', 'errors': form.errors})
     return JsonResponse({'status': 'error', 'message': 'Invalid request method'})
 
-@login_required
-def upload_file_view(request):
-    if request.method == 'POST':
-        form = UploadFileForm(request.POST, request.FILES)
-        if form.is_valid():
-            uploaded_file = request.FILES['file']
-            try:
-                df = pd.read_excel(uploaded_file)
-            except Exception as e:
-                print(f"Error al leer el archivo: {e}")
-                return HttpResponseBadRequest("Error al leer el archivo")
-
-            expected_columns = ['street', 'number', 'city', 'lat', 'long']
-            for col in expected_columns:
-                if col not in df.columns:
-                    print(f"Error: Falta la columna '{col}' en el archivo.")
-                    return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
-
-            request.session['uploaded_addresses'] = df.to_dict(orient='records')
-            return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
-    else:
-        form = UploadFileForm()
-    return render(request, 'upload.html', {'form': form})
 
 @login_required
 def upload_routes(request, step):
@@ -140,6 +159,8 @@ def upload_routes(request, step):
                 if col not in df.columns:
                     print(f"Error: Falta la columna '{col}' en el archivo.")
                     return HttpResponseBadRequest(f"Falta la columna '{col}' en el archivo")
+
+            df['code'] = ['EXC{:05d}'.format(i) for i in range(1, len(df) + 1)]
 
             request.session['uploaded_addresses'] = df.to_dict(orient='records')
             return JsonResponse({'status': 'success', 'addresses': df.to_dict(orient='records')})
@@ -207,29 +228,45 @@ def complete_form(request):
         if not step1_data or not step2_data or not step3_data:
             raise Exception('Incomplete session data')
 
-        company_id = step2_data[0]['company']
-
-        parent_item = ParentItem.objects.create(
-            company_id=company_id,
-        )
-
         routes = step3_data.get('routes', {})
 
+        company_id = step2_data[0]['company']
+        routes = step3_data.get('routes', [])
+
         for vehicle_id, route_list in routes.items():
-            vehicle_instance = Vehicle.objects.get(id=vehicle_id)
-            
-            for route in route_list:
-                route_data = Route(
-                    street=route['street'],
-                    number=route['number'],
-                    city='City Name',  # Deberías ajustar esto según tus datos
-                    latitude=route['lat'],
-                    longitude=route['long'],
-                    vehicle=vehicle_instance,
-                    parent_item=parent_item,
-                    order=route['order'],
-                )
-                route_data.save()
+            print(f"Procesando vehículo ID: {vehicle_id} con {len(route_list)} direcciones")
+
+            # Crear una nueva ruta para el vehículo
+            route_instance = Route.objects.create(
+                name="Prueba",
+                is_active=1,
+                status="not_started",
+                vehicle_id=vehicle_id,
+                created_at=timezone.localtime(timezone.now()).strftime('%Y-%m-%d')
+            )
+
+            for route_data in route_list:
+                try:
+                    address = Address.objects.create(
+                        title="Prueb",
+                        street=route_data['street'],
+                        city='City Name',
+                        state='City Name',
+                        note='City Name',
+                        receives='City Name',
+                        phone='City Name',
+                        latitude=route_data['lat'] / 1000000,
+                        longitude=route_data['long'] / 1000000,
+                        company_id=company_id,
+                    )
+
+                    RouteAddress.objects.create(
+                        route_id=route_instance.id,
+                        address_id=address.id,
+                        order=route_data['order']
+                    )
+                except Exception as e:
+                    print(f"Error al guardar la dirección {route_data['street']}: {e}")
 
         del request.session['selected_drivers']
         del request.session['uploaded_addresses']
@@ -240,14 +277,48 @@ def complete_form(request):
         print(f'Error al completar el formulario: {str(e)}')
         return JsonResponse({'status': 'error', 'message': 'Error al procesar el formulario. Por favor, inténtalo de nuevo más tarde.'})
 
+from django.db.models import Q
+
+@login_required
+def monitoring_index(request):
+
+    route_addresses = RouteAddress.objects.filter(
+        Q(route__is_active=1)
+    ).select_related('route__vehicle', 'address')
+
+    vehicles_with_routes = {}
+
+    for ra in route_addresses:
+        vehicle_id = ra.route.vehicle.id
+        if vehicle_id not in vehicles_with_routes:
+            vehicles_with_routes[vehicle_id] = {
+                'vehicle_name': ra.route.vehicle.name,
+                'route_addresses': []
+            }
+        vehicles_with_routes[vehicle_id]['route_addresses'].append({
+            'route_name': ra.route.name,
+            'address': f"{ra.address.street}, {ra.address.city}",
+            'latitude': ra.address.latitude,
+            'longitude': ra.address.longitude,
+            'order': ra.order
+        })
+
+    print("Vehicles Plan:", vehicles_with_routes)
+
+    context = {
+        'vehicles_plan': vehicles_with_routes
+    }
+
+    return render(request, 'pages/monitoring/index.html', context)
+
 
 
 
 #PLANNING MANAGEMENT
 @login_required
 def planning_managemente_index(request):
-    Items = ParentItem.objects.all()
-    paginator = Paginator(Items, 7)  # Número de registros por página
+    route = Route.objects.all()
+    paginator = Paginator(route, 5)
     page_number = request.GET.get('page') 
     page_obj = paginator.get_page(page_number)
     
@@ -260,11 +331,11 @@ def planning_managemente_index(request):
 @login_required
 def planning_managemente_details(request, id):
 
-    item = get_object_or_404(ParentItem, id=id)
+    route = get_object_or_404(Route, id=id)
 
-    routes = Route.objects.filter(parent_item=item)
+    route_detail = RouteAddress.objects.filter(route_id=route)
     
-    paginator = Paginator(routes, 7)  # Número de registros por página
+    paginator = Paginator(route_detail, 19)  # Número de registros por página
     page_number = request.GET.get('page') 
     page_obj = paginator.get_page(page_number)
     
@@ -376,4 +447,10 @@ def user_create(request, company_id):
 def no_permission(request):
     return render(request, 'no_permission.html')
     
+
+#PREFERENCES
+@login_required
+def preferences_index(request):
+
+    return render(request, 'pages/preferences/index.html')
 
