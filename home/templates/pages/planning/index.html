@@ -21,7 +21,7 @@
                                 <div style="max-height: 550px; overflow-y: auto !important;">
                                     <ul class="list-group list-group-flush" id="driver-list">
                                         {% for vehicle in vehicles %}
-                                            <li class="list-group-item d-flex justify-content-between border-0 mb-1">
+                                            <li class="list-group-item d-flex justify-content-between border-0">
                                                 <div class="form-check">
                                                     <input class="form-check-input mt-3" type="checkbox" id="id_vehicles_{{ forloop.counter0 }}" name="drivers" value="{{ vehicle.id }}">
                                                     <label class="form-check-label mt-3" for="id_vehicles_{{ forloop.counter0 }}">
@@ -273,8 +273,7 @@
 <script src="https://code.jquery.com/jquery-3.6.0.min.js"></script>
 
 <script>
-    //mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
-    mapboxgl.accessToken = '';
+    mapboxgl.accessToken = 'pk.eyJ1Ijoicm91dGUyNCIsImEiOiJjbHd5Z25oeWQxbDV5MnFxOHE4OGFla2o4In0.AWn6zJ26HiXyH04mIAq6Kg';
     
     // Mapa para cada paso
     var map1, map2, map3;
@@ -440,34 +439,6 @@ $(document).ready(function() {
     }
 });
 
-
-
-    // function getRoutesOptimized() {
-    //     $.ajax({
-    //         url: '/get_optimized_routes/',
-    //         method: 'GET',
-    //         success: function(response) {
-    //             if (response.status === 'success') {
-    //                 let routesByVehicle = response.routes.reduce((acc, route) => {
-    //                     if (!acc[route.vehicle_id]) {
-    //                         acc[route.vehicle_id] = [];
-    //                     }
-    //                     acc[route.vehicle_id].push(route);
-    //                     return acc;
-    //                 }, {});
-
-    //                 Object.keys(routesByVehicle).forEach(vehicleId => {
-    //                     updateMapWithRoutes(vehicleId, routesByVehicle[vehicleId]);
-    //                 });
-    //             } else {
-    //                 console.error('Error al obtener rutas optimizadas:', response.message);
-    //             }
-    //         },
-    //         error: function(xhr, status, error) {
-    //             console.error('Error:', error);
-    //         }
-    //     });
-    // }
 
     function displayAddresses(addresses) {
         let addressTable = `
