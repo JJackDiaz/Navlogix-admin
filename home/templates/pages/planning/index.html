@@ -21,7 +21,7 @@
                                 <div style="max-height: 550px; overflow-y: auto !important;">
                                     <ul class="list-group list-group-flush" id="driver-list">
                                         {% for vehicle in vehicles %}
-                                            <li class="list-group-item d-flex justify-content-between border-0">
+                                            <li class="list-group-item d-flex justify-content-between border-0 mb-1">
                                                 <div class="form-check">
                                                     <input class="form-check-input mt-3" type="checkbox" id="id_vehicles_{{ forloop.counter0 }}" name="drivers" value="{{ vehicle.id }}">
                                                     <label class="form-check-label mt-3" for="id_vehicles_{{ forloop.counter0 }}">
